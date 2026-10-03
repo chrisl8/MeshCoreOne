@@ -98,10 +98,10 @@ targets:
       configs:
         Debug:
           INFOPLIST_FILE: MC1/Info-Debug.plist
-          PRODUCT_BUNDLE_IDENTIFIER: io.pocketmeshtest.app
+          PRODUCT_BUNDLE_IDENTIFIER: net.lofland.mc1
         Release:
           INFOPLIST_FILE: MC1/Info.plist
-          PRODUCT_BUNDLE_IDENTIFIER: io.pocketmesh.app
+          PRODUCT_BUNDLE_IDENTIFIER: net.lofland.mc1
 
   MC1Tests:
     type: bundle.unit-test
@@ -134,10 +134,10 @@ targets:
       configs:
         Debug:
           INFOPLIST_FILE: MC1Widgets/Info.plist
-          PRODUCT_BUNDLE_IDENTIFIER: io.pocketmeshtest.app.widgets
+          PRODUCT_BUNDLE_IDENTIFIER: net.lofland.mc1.widgets
         Release:
           INFOPLIST_FILE: MC1Widgets/Info.plist
-          PRODUCT_BUNDLE_IDENTIFIER: io.pocketmesh.app.widgets
+          PRODUCT_BUNDLE_IDENTIFIER: net.lofland.mc1.widgets
 
 schemes:
   MC1:
