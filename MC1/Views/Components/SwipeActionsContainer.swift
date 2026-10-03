@@ -5,10 +5,7 @@ extension View {
   /// Earlier OSes have no container API, so the row modifiers stay inert outside `List`.
   @ViewBuilder
   func swipeActionsContainerIfAvailable() -> some View {
-    if #available(iOS 27, *) {
-      swipeActionsContainer()
-    } else {
-      self
-    }
+    // LOCAL: iOS 27 SDK (Xcode 27) not installed; API compiled out so Xcode 26.5 builds.
+    self
   }
 }
