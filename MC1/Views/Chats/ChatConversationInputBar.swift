@@ -6,6 +6,7 @@ struct ChatConversationInputBar: View {
   let conversationType: ChatConversationType
   @Binding var composingText: String
   @Binding var focusRequest: Int
+  @Binding var persistentRetryArmed: Bool
   let nodeNameByteCount: Int
   let onSend: (String) async -> Bool
   let onWillSend: () -> Void
@@ -19,7 +20,12 @@ struct ChatConversationInputBar: View {
         placeholder: L10n.Chats.Chats.Input.Placeholder.directMessage,
         maxBytes: ProtocolLimits.maxDirectMessageLength,
         isEncrypted: true,
-        leading: { ChatShareMenu(onInsert: insertShared) },
+        leading: {
+          HStack(spacing: 12) {
+            ChatShareMenu(onInsert: insertShared)
+            PersistentRetryToggle(isArmed: $persistentRetryArmed)
+          }
+        },
         onSend: send
       )
 
