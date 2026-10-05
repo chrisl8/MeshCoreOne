@@ -64,6 +64,8 @@ final class SendProgressReporter {
         $0.retry = attempt + 1
         $0.maxRetries = maxAttempts
       }
+    case .backoffScheduled:
+      break
     case let .routingChanged(contactID, isFlood):
       guard isFlood, let current, current.contactID == contactID else { return }
       await update(messageID: current.messageID) { $0.phase = .flooding }

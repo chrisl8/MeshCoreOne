@@ -166,6 +166,9 @@ public final class ServiceContainer {
   /// container exists but the service is `nil`.
   public let chatSendQueueService: ChatSendQueueService
 
+  /// Opt-in backoff retry for DMs the user armed.
+  let persistentRetryService: PersistentRetryService
+
   // MARK: - Notification Actions
 
   /// Executes the multi-service transactions behind notification actions
@@ -317,6 +320,11 @@ public final class ServiceContainer {
       channelService: channelService,
       reactionService: reactionService
     )
+    let sendQueue = chatSendQueueService
+    persistentRetryService = PersistentRetryService(
+      dataStore: dataStore,
+      enqueue: { envelope in await sendQueue.signalDMEnqueued(envelope) }
+    )
     notificationActionHandler = NotificationActionHandler(
       dataStore: dataStore,
       messageService: messageService,
@@ -354,6 +362,8 @@ public final class ServiceContainer {
     guard eventMonitoringState == .stopped else { return }
     eventMonitoringState = .starting
 
+    await messageService.setPersistentRetry(persistentRetryService)
+    await persistentRetryService.hydrate(radioID: radioID)
     await heardRepeatsService.configure(
       radioID: radioID,
       selfPublicKey: await session.currentSelfInfo?.publicKey
@@ -455,6 +465,7 @@ public final class ServiceContainer {
     notificationService.onChannelMarkAsRead = nil
     notificationService.onRoomMarkAsRead = nil
 
+    await persistentRetryService.shutdown()
     await chatSendQueueService.shutdown()
   }
 

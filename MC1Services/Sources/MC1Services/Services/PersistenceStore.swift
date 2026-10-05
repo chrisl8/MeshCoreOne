@@ -142,7 +142,8 @@ public actor PersistenceStore: ModelActor, PersistenceStoreProtocol {
     DiscoveredNode.self,
     NodeStatusSnapshot.self,
     BlockedChannelSender.self,
-    PendingSend.self
+    PendingSend.self,
+    PersistentRetry.self
   ])
 
   /// Creates a ModelContainer for the app.
