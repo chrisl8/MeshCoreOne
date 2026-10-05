@@ -35,6 +35,8 @@ struct SendProgress: Codable, Hashable {
     case retrying
     /// Direct routing gave up; now flooding.
     case flooding
+    /// Quick attempts are used up; waiting out a backoff before the next try.
+    case waiting
     case delivered
     case failed
 
@@ -43,9 +45,11 @@ struct SendProgress: Codable, Hashable {
 
   var recipient: String
   var phase: Phase
-  /// 1-based retry number while `.retrying`; 0 otherwise.
+  /// 1-based retry (`.retrying`) or backoff round (`.waiting`) number; 0 otherwise.
   var retry: Int
   var maxRetries: Int
+  /// When the next backoff try starts; only set while `.waiting`.
+  var retryAt: Date?
   /// Repeaters heard forwarding the message so far.
   var repeatsHeard: Int
 
@@ -53,6 +57,7 @@ struct SendProgress: Codable, Hashable {
     switch phase {
     case .sent, .retrying: "paperplane.fill"
     case .flooding: "dot.radiowaves.left.and.right"
+    case .waiting: "clock.fill"
     case .delivered: "checkmark.circle.fill"
     case .failed: "exclamationmark.triangle.fill"
     }
@@ -74,6 +79,7 @@ struct SendProgress: Codable, Hashable {
     case .sent: "Sent · waiting for ACK" + (repeatsHeard > 0 ? " · \(heardText)" : "")
     case .retrying: "Retry \(retry)/\(maxRetries) · \(heardText)"
     case .flooding: "Flooding · \(heardText)"
+    case .waiting: "Retry \(retry)/\(maxRetries) at \(retryAt?.formatted(date: .omitted, time: .shortened) ?? "—") · \(heardText)"
     case .delivered: "Delivered"
     case .failed: "Failed · \(heardText)"
     }

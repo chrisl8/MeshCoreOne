@@ -233,6 +233,9 @@ final class ChatViewModel {
   /// Message text being composed
   var composingText = ""
 
+  /// Armed by the compose bar toggle; applies to the next DM sent, then clears.
+  var persistentRetryArmed = false
+
   /// Reentry guard for retry actions. A single `ChatViewModel` is bound to one
   /// conversation at a time (`currentChannel` xor `currentContact`), so this
   /// flag covers both DM and channel retry paths — they can never overlap.
