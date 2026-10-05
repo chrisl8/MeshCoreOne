@@ -35,7 +35,9 @@ struct MeshStatusLiveActivity: Widget {
           }
         }
         DynamicIslandExpandedRegion(.bottom) {
-          if context.state.showsBattery || context.state.showsUnread {
+          if let send = context.state.send {
+            SendProgressRow(send: send)
+          } else if context.state.showsBattery || context.state.showsUnread {
             ExpandedDetailRow(context: context, rate: rate)
           }
         }
@@ -52,7 +54,10 @@ struct MeshStatusLiveActivity: Widget {
           )
         }
       } compactTrailing: {
-        if context.state.isConnected {
+        if let send = context.state.send {
+          Image(systemName: send.iconName)
+            .foregroundStyle(send.isFailure ? .red : .primary)
+        } else if context.state.isConnected {
           if #available(iOS 27, *) {
             AdaptiveCompactRate(rate: rate)
           } else {
@@ -62,7 +67,10 @@ struct MeshStatusLiveActivity: Widget {
           Text("—")
         }
       } minimal: {
-        if context.state.isConnected {
+        if let send = context.state.send {
+          Image(systemName: send.iconName)
+            .foregroundStyle(send.isFailure ? .red : .primary)
+        } else if context.state.isConnected {
           CompactDigitRate(rate: rate)
         } else {
           ConnectionMark(

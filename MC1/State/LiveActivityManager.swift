@@ -28,6 +28,7 @@ final class LiveActivityManager {
   private var enablementTask: Task<Void, Never>?
   private var stateObservationTask: Task<Void, Never>?
   private var throttleTask: Task<Void, Never>?
+  private var sendClearTask: Task<Void, Never>?
   private var ocvArray: [Int] = []
   private var recentPacketTimestamps: [Date] = []
   private var pendingUpdate: PendingUpdate?
@@ -42,6 +43,7 @@ final class LiveActivityManager {
   static let staleRefreshLeadTime: TimeInterval = connectedStaleInterval / 2
   static let disconnectGracePeriod: TimeInterval = 300
   static let updateInterval: TimeInterval = 15
+  static let sendResultLingerSeconds: TimeInterval = 10
 
   /// Packets in the trailing `packetWindowSeconds` as a per-minute rate. A
   /// full-minute window makes this the true count for that minute, so the
@@ -155,12 +157,15 @@ final class LiveActivityManager {
     stopDecayTimer()
     recentPacketTimestamps = []
     clearPendingUpdate()
+    sendClearTask?.cancel()
+    sendClearTask = nil
     await updateActivity(
       isConnected: false,
       battery: .some(nil),
       packetsPerMinute: 0,
       unreadCount: 0,
-      disconnectedDate: .some(.now)
+      disconnectedDate: .some(.now),
+      send: .some(nil)
     )
 
     guard lifecycleGeneration == generation, currentActivity?.id == activity.id, isCurrent() else { return }
@@ -170,6 +175,23 @@ final class LiveActivityManager {
       guard !Task.isCancelled, let self,
             lifecycleGeneration == generation, currentActivity?.id == activity.id, isCurrent() else { return }
       await endActivity()
+    }
+  }
+
+  /// Shows DM send progress, bypassing the throttle so each phase change is visible
+  /// promptly. A terminal phase lingers briefly, then clears itself unless a newer
+  /// send has replaced it.
+  func updateSendProgress(_ progress: SendProgress?) async {
+    sendClearTask?.cancel()
+    sendClearTask = nil
+    guard currentActivity != nil else { return }
+    await updateActivity(send: .some(progress))
+
+    guard let progress, progress.phase.isTerminal else { return }
+    sendClearTask = Task { [weak self] in
+      try? await Task.sleep(for: .seconds(Self.sendResultLingerSeconds))
+      guard !Task.isCancelled else { return }
+      await self?.updateActivity(send: .some(nil))
     }
   }
 
@@ -314,6 +336,8 @@ final class LiveActivityManager {
     // old battery/rate, packet-rate carry-over).
     disconnectTimer?.cancel()
     disconnectTimer = nil
+    sendClearTask?.cancel()
+    sendClearTask = nil
     stopDecayTimer()
     clearPendingUpdate()
     recentPacketTimestamps = []
@@ -548,7 +572,8 @@ final class LiveActivityManager {
     battery: Int?? = nil,
     packetsPerMinute: Int? = nil,
     unreadCount: Int? = nil,
-    disconnectedDate: Date?? = nil
+    disconnectedDate: Date?? = nil,
+    send: SendProgress?? = nil
   ) async {
     guard let activity = currentActivity else { return }
     let current = activity.content.state
@@ -557,7 +582,8 @@ final class LiveActivityManager {
       batteryPercent: battery ?? current.batteryPercent,
       packetsPerMinute: packetsPerMinute ?? current.packetsPerMinute,
       unreadCount: unreadCount ?? current.unreadCount,
-      disconnectedDate: disconnectedDate ?? current.disconnectedDate
+      disconnectedDate: disconnectedDate ?? current.disconnectedDate,
+      send: send ?? current.send
     )
     let now = Date.now
     let staleDate: Date? = if state.isConnected, state.packetsPerMinute > 0 {

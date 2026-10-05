@@ -6,6 +6,18 @@ struct LockScreenView: View {
   let context: ActivityViewContext<MeshStatusAttributes>
 
   var body: some View {
+    VStack(alignment: .leading, spacing: LiveActivityLayout.rowSpacing) {
+      if let send = context.state.send {
+        SendProgressRow(send: send)
+      }
+      statusRow
+    }
+    .padding()
+    .accessibilityElement(children: .combine)
+    .widgetURL(URL(string: "meshcoreone://status"))
+  }
+
+  private var statusRow: some View {
     HStack(alignment: .firstTextBaseline, spacing: LiveActivityLayout.identitySpacing) {
       antenna
       VStack(alignment: .leading, spacing: LiveActivityLayout.rowSpacing) {
@@ -30,9 +42,6 @@ struct LockScreenView: View {
       }
       .layoutPriority(1)
     }
-    .padding()
-    .accessibilityElement(children: .combine)
-    .widgetURL(URL(string: "meshcoreone://status"))
   }
 
   private var antenna: some View {
@@ -62,6 +71,28 @@ enum LiveActivityLayout {
   static let rowSpacing: CGFloat = 2
   static let symbolSpacing: CGFloat = 2
   static let rateUnitSpacing: CGFloat = 4
+}
+
+struct SendProgressRow: View {
+  let send: SendProgress
+
+  var body: some View {
+    HStack(spacing: 4) {
+      Image(systemName: send.iconName)
+        .foregroundStyle(send.isFailure ? .red : (send.phase == .delivered ? .green : .primary))
+        .accessibilityHidden(true)
+      Text(send.recipient)
+        .bold()
+        .lineLimit(1)
+        .truncationMode(.tail)
+      Text(send.statusText)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .contentTransition(.numericText())
+    }
+    .font(.caption)
+    .accessibilityElement(children: .combine)
+  }
 }
 
 enum PacketRateStyle {

@@ -176,6 +176,17 @@ extension AppState {
       }
     }
 
+    sendProgressReporter?.stop()
+    let reporter = SendProgressReporter(
+      liveActivityManager: liveActivityManager,
+      dataStore: services.dataStore
+    )
+    reporter.start(
+      messageService: services.messageService,
+      heardRepeatsService: services.heardRepeatsService
+    )
+    sendProgressReporter = reporter
+
     batteryMonitor.onBatteryChanged = { [weak self] battery in
       Task { @MainActor [weak self] in
         guard let self, context.isCurrent(connectionManager) else { return }
