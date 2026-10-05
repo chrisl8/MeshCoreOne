@@ -267,7 +267,8 @@ private struct BubbleDeliveryDiagnosisFooter: View {
   private var reachedMesh: Bool { heardRepeats > 0 }
 
   var body: some View {
-    let color: Color = reachedMesh ? .orange : .red
+    // Sits on a red failed bubble, so red/orange would vanish; icon and wording carry the difference.
+    let color: Color = reachedMesh ? .yellow : .white
     HStack(spacing: 2) {
       Image(systemName: reachedMesh
         ? "antenna.radiowaves.left.and.right"
