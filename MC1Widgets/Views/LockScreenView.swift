@@ -28,6 +28,10 @@ struct LockScreenView: View {
         }
       }
 
+      if let send = context.state.send {
+        SendProgressRow(send: send)
+      }
+
       if context.state.isConnected, context.state.unreadCount > 0 {
         HStack {
           Spacer()
@@ -49,6 +53,28 @@ struct LockScreenView: View {
 }
 
 // MARK: - Subviews
+
+struct SendProgressRow: View {
+  let send: SendProgress
+
+  var body: some View {
+    HStack(spacing: 4) {
+      Image(systemName: send.iconName)
+        .foregroundStyle(send.isFailure ? .red : (send.phase == .delivered ? .green : .primary))
+        .accessibilityHidden(true)
+      Text(send.recipient)
+        .bold()
+        .lineLimit(1)
+        .truncationMode(.tail)
+      Text(send.statusText)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .contentTransition(.numericText())
+    }
+    .font(.caption)
+    .accessibilityElement(children: .combine)
+  }
+}
 
 struct PacketRateLabel: View {
   let packetsPerMinute: Int

@@ -48,7 +48,9 @@ struct MeshStatusLiveActivity: Widget {
           BatteryLabel(percent: context.state.batteryPercent)
         }
         DynamicIslandExpandedRegion(.bottom) {
-          if context.state.isConnected, context.state.unreadCount > 0 {
+          if let send = context.state.send {
+            SendProgressRow(send: send)
+          } else if context.state.isConnected, context.state.unreadCount > 0 {
             HStack {
               Image(systemName: "envelope.badge")
                 .accessibilityHidden(true)
@@ -64,7 +66,10 @@ struct MeshStatusLiveActivity: Widget {
         Image(systemName: context.state.antennaIconName)
           .foregroundStyle(context.state.isConnected ? .green : .orange)
       } compactTrailing: {
-        if context.state.isConnected {
+        if let send = context.state.send {
+          Image(systemName: send.iconName)
+            .foregroundStyle(send.isFailure ? .red : .primary)
+        } else if context.state.isConnected {
           let rate = context.isStale ? 0 : context.state.packetsPerMinute
           Text("↓\(rate)/m")
             .monospacedDigit()
@@ -73,7 +78,10 @@ struct MeshStatusLiveActivity: Widget {
           Text("—")
         }
       } minimal: {
-        if context.state.isConnected {
+        if let send = context.state.send {
+          Image(systemName: send.iconName)
+            .foregroundStyle(send.isFailure ? .red : .primary)
+        } else if context.state.isConnected {
           let rate = context.isStale ? 0 : context.state.packetsPerMinute
           Text("\(rate)")
             .font(.caption2)
