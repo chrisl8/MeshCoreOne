@@ -164,7 +164,12 @@ extension ChatViewModel {
 
     let message: MessageDTO
     do {
-      message = try await messageService.createPendingMessage(text: text, to: contact)
+      message = try await messageService.createPendingMessage(
+        text: text,
+        to: contact,
+        keepTrying: persistentRetryArmed
+      )
+      persistentRetryArmed = false
       appendMessageIfNew(message)
       schedulePrefetchForMessage(message, isChannelMessage: false)
       syncCoordinator?.notifyConversationsChanged()
