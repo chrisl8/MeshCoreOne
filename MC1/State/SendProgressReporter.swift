@@ -64,8 +64,13 @@ final class SendProgressReporter {
         $0.retry = attempt + 1
         $0.maxRetries = maxAttempts
       }
-    case .backoffScheduled:
-      break
+    case let .backoffScheduled(messageID, round, maxRounds, retryAt):
+      await update(messageID: messageID) {
+        $0.phase = .waiting
+        $0.retry = round
+        $0.maxRetries = maxRounds
+        $0.retryAt = retryAt
+      }
     case let .routingChanged(contactID, isFlood):
       guard isFlood, let current, current.contactID == contactID else { return }
       await update(messageID: current.messageID) { $0.phase = .flooding }
@@ -88,6 +93,7 @@ final class SendProgressReporter {
     }
     guard var tracked = current, !tracked.progress.phase.isTerminal else { return }
     change(&tracked.progress)
+    if tracked.progress.phase != .waiting { tracked.progress.retryAt = nil }
     current = tracked
     await liveActivityManager.updateSendProgress(tracked.progress)
   }
@@ -105,6 +111,7 @@ final class SendProgressReporter {
         phase: .sent,
         retry: 0,
         maxRetries: 0,
+        retryAt: nil,
         repeatsHeard: message.heardRepeats
       )
     )

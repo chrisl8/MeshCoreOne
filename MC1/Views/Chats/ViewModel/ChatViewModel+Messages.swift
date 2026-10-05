@@ -163,11 +163,14 @@ extension ChatViewModel {
     errorMessage = nil
 
     do {
-      let admission = try await queue.enqueueDirectMessage(text: text, to: contact) { message in
+      let admission = try await queue.enqueueDirectMessage(
+        text: text, to: contact, keepTrying: persistentRetryArmed
+      ) { message in
         self.appendMessageIfNew(message)
         self.schedulePrefetchForMessage(message, isChannelMessage: false)
         self.syncCoordinator?.notifyConversationsChanged()
       }
+      persistentRetryArmed = false
       if case let .enqueueFailed(message, error) = admission {
         await presentLocalEnqueueFailure(messageID: message.id, error: error)
       }

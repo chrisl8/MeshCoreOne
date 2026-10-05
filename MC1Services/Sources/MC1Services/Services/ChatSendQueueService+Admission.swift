@@ -4,6 +4,7 @@ public extension ChatSendQueueService {
   func enqueueDirectMessage(
     text: String,
     to contact: ContactDTO,
+    keepTrying: Bool = false,
     onMessageCreated: (@MainActor (MessageDTO) -> Void)? = nil
   ) async throws -> ChatSendAdmission {
     guard contact.radioID == radioID, beginAdmission() else {
@@ -11,7 +12,7 @@ public extension ChatSendQueueService {
     }
     defer { finishAdmission() }
 
-    let message = try await messageService.createPendingMessage(text: text, to: contact)
+    let message = try await messageService.createPendingMessage(text: text, to: contact, keepTrying: keepTrying)
     onMessageCreated?(message)
     do {
       try await enqueueDM(DirectMessageEnvelope(messageID: message.id, contactID: contact.id))
