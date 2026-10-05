@@ -427,6 +427,12 @@ public enum L10n {
         public static let tooLong = L10n.tr("Chats", "chats.input.tooLong", fallback: "Message too long")
         /// Location: ChatInputBar.swift - Accessibility hint when message is empty
         public static let typeFirst = L10n.tr("Chats", "chats.input.typeFirst", fallback: "Type a message first")
+        public enum PersistentRetry {
+          /// Location: PersistentRetryToggle.swift - Accessibility hint for the keep-trying toggle
+          public static let hint = L10n.tr("Chats", "chats.input.persistentRetry.hint", fallback: "If this message fails, keep retrying with increasing waits")
+          /// Location: PersistentRetryToggle.swift - Accessibility label for the keep-trying toggle beside the compose field
+          public static let label = L10n.tr("Chats", "chats.input.persistentRetry.label", fallback: "Persistent retry")
+        }
         public enum Placeholder {
           /// Location: ChatConversationView.swift - Input bar placeholder for direct messages
           public static let directMessage = L10n.tr("Chats", "chats.input.placeholder.directMessage", fallback: "Direct Message")

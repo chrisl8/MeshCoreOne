@@ -188,6 +188,7 @@ struct ChatConversationView: View {
         conversationType: conversationType,
         composingText: $chatViewModel.composingText,
         focusRequest: $inputFocusRequest,
+        persistentRetryArmed: $chatViewModel.persistentRetryArmed,
         nodeNameByteCount: appState.connectedDevice?.nodeName.utf8.count ?? 0,
         onSend: { text in
           switch conversationType {
