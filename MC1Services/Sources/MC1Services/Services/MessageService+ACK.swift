@@ -88,6 +88,7 @@ public extension MessageService {
             !current.isResolved,
             current.sentAt == tracking.sentAt,
             now > current.expiresAt(giveUpWindow: window) else { continue }
+      if try await deferToPersistentRetry(messageID: messageID, now: now) { continue }
 
       let result: PendingAcknowledgementCommit
       do {
@@ -101,6 +102,34 @@ public extension MessageService {
       let deadline = max(window, tracking.timeout)
       logger.warning("[ack-diag] give-up: failed after \(String(format: "%.1f", now.timeIntervalSince(tracking.sentAt)))s window=\(window)s deadline=\(String(format: "%.1f", deadline))s livePending=\(pendingAcks.count)")
     }
+  }
+
+  /// Gives an armed message another round instead of failing it. Returns true when
+  /// the message was deferred. The pending-ACK entry stays so a late ACK from an
+  /// earlier attempt still marks the message delivered; its deadline is pushed past
+  /// the wait, and the retry's own send refreshes it.
+  private func deferToPersistentRetry(messageID: UUID, now: Date) async throws -> Bool {
+    guard let persistentRetry,
+          let plan = await persistentRetry.planRetry(for: messageID),
+          let tracking = pendingAcks[messageID], tracking.isAwaitingAck else { return false }
+
+    pendingAcks[messageID]?.sentAt = now
+    pendingAcks[messageID]?.timeout = plan.delay + config.ackGiveUpWindow
+    // A saved owner pins the deadline; clear it so expiry follows the pushed-out window.
+    pendingAcks[messageID]?.resetOwner()
+    try await dataStore.updateMessageRetryStatus(
+      id: messageID,
+      status: .retrying,
+      retryAttempt: plan.round - 1,
+      maxRetryAttempts: plan.maxRounds
+    )
+    statusEventBroadcaster.yield(.backoffScheduled(
+      messageID: messageID,
+      round: plan.round,
+      maxRounds: plan.maxRounds,
+      retryAt: plan.retryAt
+    ))
+    return true
   }
 
   /// Fails all pending messages that are awaiting ACK.
