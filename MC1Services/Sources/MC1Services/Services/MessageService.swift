@@ -69,6 +69,9 @@ public actor MessageService {
   /// Interval between ACK expiry checks (in seconds)
   var checkInterval: TimeInterval = 5.0
 
+  /// Opt-in backoff retry for messages the user armed. Injected by `ServiceContainer`.
+  var persistentRetry: PersistentRetryService?
+
   /// Tracks message IDs currently being retried to prevent concurrent retry attempts
   var inFlightRetries: Set<UUID> = []
 
@@ -91,6 +94,10 @@ public actor MessageService {
     self.dataStore = dataStore
     self.contactService = contactService
     self.config = config
+  }
+
+  func setPersistentRetry(_ service: PersistentRetryService?) {
+    persistentRetry = service
   }
 
   /// Whether a contact service was injected at construction.

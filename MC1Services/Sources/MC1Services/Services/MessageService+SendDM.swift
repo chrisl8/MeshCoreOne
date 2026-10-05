@@ -246,13 +246,15 @@ extension MessageService {
   ///   - contact: The recipient contact
   ///   - textType: The type of text content (default: .plain)
   ///   - replyToID: Optional ID of message being replied to
+  ///   - keepTrying: Keep retrying with backoff after the normal retries fail
   ///
   /// - Returns: The created message DTO with pending status
   public func createPendingMessage(
     text: String,
     to contact: ContactDTO,
     textType: TextType = .plain,
-    replyToID: UUID? = nil
+    replyToID: UUID? = nil,
+    keepTrying: Bool = false
   ) async throws -> MessageDTO {
     try validateDirectMessage(text: text, to: contact)
 
@@ -270,6 +272,9 @@ extension MessageService {
     )
     try await dataStore.saveMessage(messageDTO)
     try await dataStore.updateContactLastMessage(contactID: contact.id, date: messageDTO.date)
+    if keepTrying {
+      await persistentRetry?.arm(messageID: messageID, contactID: contact.id, radioID: contact.radioID)
+    }
 
     return messageDTO
   }
