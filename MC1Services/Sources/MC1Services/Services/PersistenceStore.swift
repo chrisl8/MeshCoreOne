@@ -167,6 +167,7 @@ public actor PersistenceStore: ModelActor, PersistenceStoreProtocol {
     BlockedChannelSender.self,
     PendingRadioErase.self,
     PendingSend.self,
+    PersistentRetry.self,
     RecentlyBlockedMessage.self
   ])
 

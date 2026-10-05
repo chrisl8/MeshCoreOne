@@ -212,11 +212,13 @@ public extension MessageService {
   }
 
   /// Saves the pending Message and updates contact recency before the caller publishes it.
+  /// - Parameter keepTrying: Arm persistent retry (backoff rounds after the normal retries fail).
   internal func createPendingMessage(
     text: String,
     to contact: ContactDTO,
     textType: TextType = .plain,
-    replyToID: UUID? = nil
+    replyToID: UUID? = nil,
+    keepTrying: Bool = false
   ) async throws -> MessageDTO {
     try validateDirectMessage(text: text, to: contact)
 
@@ -234,6 +236,9 @@ public extension MessageService {
     )
     try await dataStore.saveMessage(messageDTO)
     try await dataStore.updateContactLastMessage(contactID: contact.id, date: messageDTO.date)
+    if keepTrying {
+      await persistentRetry?.arm(messageID: messageID, contactID: contact.id, radioID: contact.radioID)
+    }
 
     return messageDTO
   }
@@ -333,19 +338,46 @@ public extension MessageService {
       wireTimestamp = UInt32(Date().timeIntervalSince1970)
     }
 
+    // Persistent retry. A backoff round (round > 0) is "try again later", not "try
+    // harder": one send, and the stored timestamp is put back to the original send
+    // time afterwards so the bubble doesn't appear to move. An armed message's first
+    // drain is two sends (saved path, then flood), or one if the contact is already
+    // on flood. Backoff rounds take it from there.
+    let backoffRound = await persistentRetry?.round(for: messageID) ?? 0
+    let isBackoffSend = backoffRound > 0
+    var isArmedFirstDrain = false
+    if !isBackoffSend, let persistentRetry {
+      isArmedFirstDrain = await persistentRetry.isArmed(messageID)
+    }
+    let alreadyFlood = contact.outPathLength == PacketBuilder.floodPathSentinel
+    let sendBudget: DMSendBudget
+    if isSingleAttempt || existingMessage.reactionTargetMessageID != nil || isBackoffSend {
+      sendBudget = .singleAttempt
+    } else if isArmedFirstDrain {
+      sendBudget = alreadyFlood ? .singleAttempt : DMSendBudget(directAttempts: 1, floodAttempts: 1)
+    } else {
+      sendBudget = dmSendBudgetProvider()
+    }
+    let wireText = isBackoffSend ? Self.backoffWireText(existingMessage) : existingMessage.text
+
     do {
       let acknowledgedCode = try await sendDirectMessageWithRetryLoop(
         messageID: messageID,
         to: contact,
-        text: existingMessage.text,
+        text: wireText,
         timestamp: wireTimestamp,
         timeout: nil,
-        budget: isSingleAttempt || existingMessage.reactionTargetMessageID != nil ? .singleAttempt : dmSendBudgetProvider(),
+        budget: sendBudget,
         sendLease: sendLease,
         waitForAcknowledgement: existingMessage.reactionTargetMessageID == nil,
         pendingSendID: pendingSendID,
         preserveTimestamp: preserveTimestamp
       )
+
+      if isBackoffSend, !preserveTimestamp,
+         await (try? dataStore.fetchMessage(id: messageID))?.status != .delivered {
+        try? await dataStore.updateMessageTimestamp(id: messageID, timestamp: existingMessage.timestamp)
+      }
 
       // Bump only on a confirmed successful resend so sendCount counts
       // landed user-initiated sends, not queue-driven attempts;
@@ -392,6 +424,17 @@ public extension MessageService {
       }
       try await failMessageAndRethrow(error, messageID: messageID, pendingSendID: pendingSendID)
     }
+  }
+
+  /// The text to put on the wire. A message in a persistent-retry backoff round
+  /// goes out as `[sent 14:32] text`, so a recipient who gets it late can see when
+  /// it was first attempted. The stored text is untouched. The prefix is skipped
+  /// when it would push the message over the protocol limit.
+  private static func backoffWireText(_ message: MessageDTO) -> String {
+    let stamp = message.createdAt.formatted(date: .omitted, time: .shortened)
+    let prefixed = "[sent \(stamp)] \(message.text)"
+    guard prefixed.utf8.count <= ProtocolLimits.maxDirectMessageLength else { return message.text }
+    return prefixed
   }
 
   /// Installs an acknowledgement owner for attempts already handed to the radio.

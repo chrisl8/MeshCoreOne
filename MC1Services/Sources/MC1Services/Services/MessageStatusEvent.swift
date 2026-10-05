@@ -21,6 +21,9 @@ public enum MessageStatusEvent: Sendable {
   case resent(messageID: UUID)
   /// A retry attempt is in flight; use for UI retry progress.
   case retrying(messageID: UUID, attempt: Int, maxAttempts: Int)
+  /// A persistent-retry message used up its quick attempts and is waiting out a
+  /// backoff before the next try (`round` of `maxRounds`).
+  case backoffScheduled(messageID: UUID, round: Int, maxRounds: Int, retryAt: Date)
   /// A contact's routing switched between direct and flood during a send.
   case routingChanged(contactID: UUID, isFlood: Bool)
   /// A message failed after exhausting retries or a terminal send error.
