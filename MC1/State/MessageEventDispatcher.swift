@@ -140,6 +140,9 @@ final class MessageEventDispatcher {
           stream.send(.messageResent(messageID: messageID))
         case let .retrying(messageID, attempt, maxAttempts):
           stream.send(.messageRetrying(messageID: messageID, attempt: attempt, maxAttempts: maxAttempts))
+        case let .backoffScheduled(messageID, round, maxRounds, _):
+          // A backoff wait renders like a retry in progress: spinner plus round/maxRounds.
+          stream.send(.messageRetrying(messageID: messageID, attempt: round - 1, maxAttempts: maxRounds))
         case let .routingChanged(contactID, isFlood):
           stream.send(.routingChanged(contactID: contactID, isFlood: isFlood))
         case let .failed(messageID):
