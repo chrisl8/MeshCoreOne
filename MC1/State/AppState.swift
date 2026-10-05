@@ -316,6 +316,7 @@ final class AppState {
 
   /// Live Activity lifecycle (start/update/stop on Lock Screen and Dynamic Island)
   let liveActivityManager = LiveActivityManager()
+  var sendProgressReporter: SendProgressReporter?
 
   /// Task chain that joins each BLE lifecycle transition before starting the next.
   var bleLifecycleTransitionTask: Task<Void, Never>?
@@ -633,6 +634,8 @@ final class AppState {
     advertisementEventsTask = nil
     rxLogEventsTask?.cancel()
     rxLogEventsTask = nil
+    sendProgressReporter?.stop()
+    sendProgressReporter = nil
     messageEventDispatcher.cancelAll()
     navigation.clearPendingLinks()
     resetRadioScopedToolWorkspaces()
