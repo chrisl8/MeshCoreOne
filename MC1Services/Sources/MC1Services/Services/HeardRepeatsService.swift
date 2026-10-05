@@ -11,6 +11,9 @@ public actor HeardRepeatsService {
   /// Device ID for the current session
   private var radioID: UUID?
 
+  /// First byte of this radio's public key: the source hash on its own TEXT_MSG packets.
+  private var selfKeyHash: UInt8?
+
   /// Multicast broadcaster for heard-repeat events.
   private nonisolated let eventBroadcaster = EventBroadcaster<HeardRepeatEvent>()
 
@@ -35,8 +38,9 @@ public actor HeardRepeatsService {
 
   /// Configure the service with the connected radio.
   /// Must be called once before processing any RX log entries.
-  public func configure(radioID: UUID) {
+  public func configure(radioID: UUID, selfPublicKey: Data? = nil) {
     self.radioID = radioID
+    selfKeyHash = selfPublicKey?.first
     logger.info("Configured with radioID: \(radioID)")
   }
 
@@ -60,6 +64,10 @@ public actor HeardRepeatsService {
   /// - Returns: The updated heardRepeats count if a match was found, nil otherwise
   @discardableResult
   public func processForRepeats(_ entry: RxLogEntryDTO) async -> Int? {
+    if entry.payloadType == .textMessage {
+      return await processDMEcho(entry)
+    }
+
     // Only process successfully decrypted channel messages
     guard entry.payloadType == .groupText else { return nil }
     guard entry.decryptStatus == .success else { return nil }
@@ -118,6 +126,33 @@ public actor HeardRepeatsService {
       )
     } catch {
       logger.error("Failed to process repeat: \(error.localizedDescription)")
+      return nil
+    }
+  }
+
+  /// Attributes a heard TEXT_MSG packet to one of our own in-flight DMs.
+  ///
+  /// DM payloads are encrypted for the recipient, so unlike channel echoes they cannot
+  /// be matched on text. A packet whose source hash is ours and whose destination hash
+  /// matches the contact of a DM still awaiting delivery is a repeater forwarding that DM.
+  /// This is a heuristic: a one-byte hash can collide, but only an active send can match.
+  private func processDMEcho(_ entry: RxLogEntryDTO) async -> Int? {
+    guard let radioID, let selfKeyHash else { return nil }
+    guard entry.packetPayload.count >= 2 else { return nil }
+    let recipientHash = entry.packetPayload[entry.packetPayload.startIndex]
+    let senderHash = entry.packetPayload[entry.packetPayload.startIndex + 1]
+    guard senderHash == selfKeyHash else { return nil }
+
+    if await isDuplicateRepeat(entry.id) { return nil }
+
+    do {
+      guard let message = try await dataStore.findActiveOutgoingDM(
+        radioID: radioID,
+        recipientHash: recipientHash
+      ) else { return nil }
+      return try await recordSentEcho(message: message, entry: entry)
+    } catch {
+      logger.error("Failed to process DM echo: \(error.localizedDescription)")
       return nil
     }
   }

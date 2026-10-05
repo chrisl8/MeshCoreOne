@@ -75,6 +75,9 @@ struct BubbleFooterRow: View {
         usesHeardTimesAccessibility: !footer.showStatusRow
       )))
     }
+    if footer.status == .failed, !footer.isChannelMessage, footer.showStatusRow {
+      badges.append(AnyView(BubbleDeliveryDiagnosisFooter(heardRepeats: footer.heardRepeats)))
+    }
     if footer.sendCount > 1, footer.showStatusRow {
       badges.append(AnyView(BubbleSendCountFooter(count: footer.sendCount, color: timeColor)))
     }
@@ -252,6 +255,29 @@ private struct BubbleRepeatFooter: View {
     .footerChip(color: color)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
+  }
+}
+
+/// Why a DM failed, at a glance: a repeater was heard forwarding it (the packet
+/// reached the mesh, so the problem is downstream) or none was (nothing in range
+/// heard us, so the problem is on our side of the first hop).
+private struct BubbleDeliveryDiagnosisFooter: View {
+  let heardRepeats: Int
+
+  private var reachedMesh: Bool { heardRepeats > 0 }
+
+  var body: some View {
+    let color: Color = reachedMesh ? .orange : .red
+    HStack(spacing: 2) {
+      Image(systemName: reachedMesh
+        ? "antenna.radiowaves.left.and.right"
+        : "antenna.radiowaves.left.and.right.slash")
+      Text(reachedMesh ? L10n.Chats.Chats.Message.Status.reachedMesh : L10n.Chats.Chats.Message.Status.noMeshHeard)
+    }
+    .font(.caption2)
+    .foregroundStyle(color)
+    .footerChip(color: color)
+    .accessibilityElement(children: .combine)
   }
 }
 

@@ -354,7 +354,10 @@ public final class ServiceContainer {
     guard eventMonitoringState == .stopped else { return }
     eventMonitoringState = .starting
 
-    await heardRepeatsService.configure(radioID: radioID)
+    await heardRepeatsService.configure(
+      radioID: radioID,
+      selfPublicKey: await session.currentSelfInfo?.publicKey
+    )
 
     // Start event monitoring for services that need it
     if enableAdvertisementMonitoring {
