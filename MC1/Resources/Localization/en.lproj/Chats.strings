@@ -731,6 +731,12 @@
 /* Location: UnifiedMessageBubble.swift - Message status sent multiple times - %d is count */
 "chats.message.status.sentMultiple" = "Sent %d times";
 
+/* Location: BubbleFooterRow.swift - Failed DM chip when a repeater was heard forwarding it */
+"chats.message.status.reachedMesh" = "On mesh";
+
+/* Location: BubbleFooterRow.swift - Failed DM chip when no repeater was heard forwarding it */
+"chats.message.status.noMeshHeard" = "No repeats";
+
 /* Location: UnifiedMessageBubble.swift - Message status delivered */
 "chats.message.status.delivered" = "Delivered";
 

@@ -792,6 +792,10 @@ public enum L10n {
           public static let delivered = L10n.tr("Chats", "chats.message.status.delivered", fallback: "Delivered")
           /// Location: UnifiedMessageBubble.swift - Message status failed
           public static let failed = L10n.tr("Chats", "chats.message.status.failed", fallback: "Failed")
+          /// Location: BubbleFooterRow.swift - Failed DM chip when no repeater was heard forwarding it
+          public static let noMeshHeard = L10n.tr("Chats", "chats.message.status.noMeshHeard", fallback: "No repeats")
+          /// Location: BubbleFooterRow.swift - Failed DM chip when a repeater was heard forwarding it
+          public static let reachedMesh = L10n.tr("Chats", "chats.message.status.reachedMesh", fallback: "On mesh")
           /// Location: UnifiedMessageBubble.swift - Status row retry button
           public static let retry = L10n.tr("Chats", "chats.message.status.retry", fallback: "Retry")
           /// Location: UnifiedMessageBubble.swift - Message status retrying
