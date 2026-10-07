@@ -167,7 +167,7 @@ public final class ServiceContainer {
   public let chatSendQueueService: ChatSendQueueService
 
   /// Opt-in backoff retry for DMs the user armed.
-  let persistentRetryService: PersistentRetryService
+  public let persistentRetryService: PersistentRetryService
 
   // MARK: - Notification Actions
 

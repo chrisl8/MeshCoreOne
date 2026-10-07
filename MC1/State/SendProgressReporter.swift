@@ -18,6 +18,9 @@ final class SendProgressReporter {
   /// Non-nil while the tracked DM is retrying, flooding, or waiting out a backoff.
   private(set) var banner: PendingBanner?
 
+  /// Called when the tracked send enters or leaves the backoff wait.
+  @ObservationIgnored var onWaitingChanged: ((Bool) -> Void)?
+
   @ObservationIgnored private let liveActivityManager: LiveActivityManager
   @ObservationIgnored private let dataStore: PersistenceStore
 
@@ -55,6 +58,7 @@ final class SendProgressReporter {
   func stop() {
     for task in tasks { task.cancel() }
     tasks.removeAll()
+    if current?.progress.phase == .waiting { onWaitingChanged?(false) }
     current = nil
     banner = nil
   }
@@ -101,12 +105,16 @@ final class SendProgressReporter {
   private func update(messageID: UUID, _ change: (inout SendProgress) -> Void) async {
     if current?.messageID != messageID {
       guard let tracked = await beginTracking(messageID: messageID) else { return }
+      if current?.progress.phase == .waiting { onWaitingChanged?(false) }
       current = tracked
     }
     guard var tracked = current, !tracked.progress.phase.isTerminal else { return }
     change(&tracked.progress)
     if tracked.progress.phase != .waiting { tracked.progress.retryAt = nil }
+    let wasWaiting = current?.progress.phase == .waiting
     current = tracked
+    let isWaiting = tracked.progress.phase == .waiting
+    if wasWaiting != isWaiting { onWaitingChanged?(isWaiting) }
     switch tracked.progress.phase {
     case .retrying, .flooding, .waiting:
       banner = PendingBanner(contactID: tracked.contactID, progress: tracked.progress)

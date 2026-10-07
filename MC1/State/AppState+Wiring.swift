@@ -152,6 +152,16 @@ extension AppState {
     )
     sendProgressReporter = reporter
 
+    let persistentRetry = services.persistentRetryService
+    let movementMonitor = retryMovementMonitor ?? RetryMovementMonitor()
+    retryMovementMonitor = movementMonitor
+    movementMonitor.onMoved = {
+      Task { await persistentRetry.retryNowForMovement() }
+    }
+    reporter.onWaitingChanged = { [weak movementMonitor] isWaiting in
+      if isWaiting { movementMonitor?.start() } else { movementMonitor?.stop() }
+    }
+
     batteryMonitor.onBatteryChanged = { [weak self] battery in
       Task { @MainActor [weak self] in
         await self?.liveActivityManager.handleBatteryChanged(battery: battery)

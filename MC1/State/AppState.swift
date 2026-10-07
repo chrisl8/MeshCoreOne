@@ -253,6 +253,7 @@ final class AppState {
   /// Live Activity lifecycle (start/update/stop on Lock Screen and Dynamic Island)
   let liveActivityManager = LiveActivityManager()
   var sendProgressReporter: SendProgressReporter?
+  var retryMovementMonitor: RetryMovementMonitor?
 
   /// Task chain that serializes BLE lifecycle transitions across scene-phase changes.
   /// Do not cancel this task externally -- cancelling breaks the serialization
@@ -504,6 +505,7 @@ final class AppState {
     rxLogEventsTask = nil
     sendProgressReporter?.stop()
     sendProgressReporter = nil
+    retryMovementMonitor?.stop()
     messageEventDispatcher.cancelAll()
     navigation.clearPendingLinks()
   }
