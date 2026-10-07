@@ -359,13 +359,15 @@ extension MessageService {
       try await dataStore.updateMessageTimestamp(id: messageID, timestamp: wireTimestampRaw)
     }
 
+    let wireText = await wireTextForRetry(existingMessage)
+
     do {
       let sentInfo = try await sendDirectMessageWithRetryLoop(
         messageID: messageID,
         contactID: contact.id,
         radioID: contact.radioID,
         publicKey: contact.publicKey,
-        text: existingMessage.text,
+        text: wireText,
         timestamp: wireTimestamp,
         timestampRaw: wireTimestampRaw,
         timeout: nil
@@ -402,6 +404,18 @@ extension MessageService {
     } catch {
       try await failMessageAndRethrow(error, messageID: messageID)
     }
+  }
+
+  /// The text to put on the wire. A message in a persistent-retry backoff round
+  /// goes out as `[sent 14:32] text`, so a recipient who gets it late can see when
+  /// it was first attempted. The stored text is untouched. The prefix is skipped
+  /// when it would push the message over the protocol limit.
+  private func wireTextForRetry(_ message: MessageDTO) async -> String {
+    guard let persistentRetry, await persistentRetry.round(for: message.id) > 0 else { return message.text }
+    let stamp = message.createdAt.formatted(date: .omitted, time: .shortened)
+    let prefixed = "[sent \(stamp)] \(message.text)"
+    guard prefixed.utf8.count <= ProtocolLimits.maxDirectMessageLength else { return message.text }
+    return prefixed
   }
 
   // MARK: - Direct Message Retry Loop
