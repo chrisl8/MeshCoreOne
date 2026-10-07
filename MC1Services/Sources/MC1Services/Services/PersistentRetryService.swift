@@ -106,6 +106,22 @@ public actor PersistentRetryService {
     }
   }
 
+  /// Cuts every waiting backoff short because the user has moved. The retry does
+  /// not use up a round: a new location may be in range, so it gets a fresh try
+  /// without shortening the schedule if it still fails.
+  public func retryNowForMovement() async {
+    for messageID in Array(timers.keys) {
+      timers[messageID]?.cancel()
+      do {
+        guard let record = try await dataStore.fetchPersistentRetry(messageID: messageID) else { continue }
+        logger.info("Moved; retrying \(messageID) early")
+        await fire(messageID: messageID, contactID: record.contactID, radioID: record.radioID, refundRound: true)
+      } catch {
+        logger.error("Movement retry failed for \(messageID): \(error.localizedDescription)")
+      }
+    }
+  }
+
   /// Reschedules retries that were waiting when the app last stopped. Overdue ones
   /// fire immediately; the send queue then parks them until the radio is ready.
   func hydrate(radioID: UUID) async {
@@ -134,7 +150,7 @@ public actor PersistentRetryService {
     }
   }
 
-  private func fire(messageID: UUID, contactID: UUID, radioID: UUID) async {
+  private func fire(messageID: UUID, contactID: UUID, radioID: UUID, refundRound: Bool = false) async {
     timers[messageID] = nil
     do {
       guard let message = try await dataStore.fetchMessage(id: messageID),
@@ -143,7 +159,8 @@ public actor PersistentRetryService {
         return
       }
       guard let record = try await dataStore.fetchPersistentRetry(messageID: messageID) else { return }
-      try await dataStore.updatePersistentRetry(messageID: messageID, round: record.round, nextRetryAt: nil)
+      let round = refundRound ? max(record.round - 1, 0) : record.round
+      try await dataStore.updatePersistentRetry(messageID: messageID, round: round, nextRetryAt: nil)
 
       // Same path as the manual retry button: one transaction replaces any stale
       // queue row and flips the message to pending, then the queue is signalled.
