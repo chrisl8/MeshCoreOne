@@ -66,6 +66,11 @@ public actor PersistentRetryService {
     }
   }
 
+  /// Backoff rounds already started for a message; 0 when it is not armed.
+  public func round(for messageID: UUID) async -> Int {
+    (try? await dataStore.fetchPersistentRetry(messageID: messageID))?.round ?? 0
+  }
+
   /// Called when a message's ACK window has expired. Returns the plan for the next
   /// backoff retry, or nil when the message is not armed or has used every round
   /// (the caller then fails it as usual).
