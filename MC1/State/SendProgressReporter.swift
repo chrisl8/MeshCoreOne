@@ -1,17 +1,28 @@
 import Foundation
 import MC1Services
+import Observation
 
 /// Turns DM send events into Live Activity progress.
 ///
 /// Tracks one send at a time: the most recently active DM owns the display, so a
 /// second concurrent DM replaces the first. Channel messages are ignored.
 @MainActor
+@Observable
 final class SendProgressReporter {
-  private let liveActivityManager: LiveActivityManager
-  private let dataStore: PersistenceStore
+  /// A send that is still being retried, for the Chats list banner.
+  struct PendingBanner: Equatable {
+    let contactID: UUID
+    let progress: SendProgress
+  }
+
+  /// Non-nil while the tracked DM is retrying, flooding, or waiting out a backoff.
+  private(set) var banner: PendingBanner?
+
+  @ObservationIgnored private let liveActivityManager: LiveActivityManager
+  @ObservationIgnored private let dataStore: PersistenceStore
 
   private var current: Tracked?
-  private var tasks: [Task<Void, Never>] = []
+  @ObservationIgnored private var tasks: [Task<Void, Never>] = []
 
   private struct Tracked {
     let messageID: UUID
@@ -45,6 +56,7 @@ final class SendProgressReporter {
     for task in tasks { task.cancel() }
     tasks.removeAll()
     current = nil
+    banner = nil
   }
 
   private func handle(_ event: MessageStatusEvent) async {
@@ -95,6 +107,12 @@ final class SendProgressReporter {
     change(&tracked.progress)
     if tracked.progress.phase != .waiting { tracked.progress.retryAt = nil }
     current = tracked
+    switch tracked.progress.phase {
+    case .retrying, .flooding, .waiting:
+      banner = PendingBanner(contactID: tracked.contactID, progress: tracked.progress)
+    case .sent, .delivered, .failed:
+      banner = nil
+    }
     await liveActivityManager.updateSendProgress(tracked.progress)
   }
 
