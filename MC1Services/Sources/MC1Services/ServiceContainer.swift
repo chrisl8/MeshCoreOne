@@ -101,7 +101,7 @@ public final class ServiceContainer {
 
   let plainTextSendGate: PlainTextSendGate
   /// Opt-in backoff retry for DMs the user armed.
-  let persistentRetryService: PersistentRetryService
+  public let persistentRetryService: PersistentRetryService
 
   // MARK: - Notification Actions
 

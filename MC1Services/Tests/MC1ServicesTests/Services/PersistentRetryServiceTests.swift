@@ -96,6 +96,31 @@ struct PersistentRetryServiceTests {
     #expect(record?.round == 1)
   }
 
+  @Test
+  func `moving cuts a waiting retry short without using a round`() async throws {
+    let radioID = UUID()
+    let contactID = UUID()
+    let messageID = UUID()
+    let queued = Queued()
+    let (store, service) = try makeStoreAndService(enqueue: { await queued.add($0) })
+    try await store.saveMessage(.testDirectMessage(
+      id: messageID,
+      radioID: radioID,
+      contactID: contactID,
+      status: .sent
+    ))
+    await service.arm(messageID: messageID, contactID: contactID, radioID: radioID)
+    _ = await service.planRetry(for: messageID)
+    #expect(await service.round(for: messageID) == 1)
+
+    await service.retryNowForMovement()
+
+    #expect(await queued.envelopes.map(\.messageID) == [messageID])
+    let record = try await store.fetchPersistentRetry(messageID: messageID)
+    #expect(record?.nextRetryAt == nil)
+    #expect(record?.round == 0)
+  }
+
   // MARK: - Helpers
 
   private final class Clock: @unchecked Sendable {
