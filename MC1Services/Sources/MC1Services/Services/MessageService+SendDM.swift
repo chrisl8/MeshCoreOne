@@ -744,9 +744,16 @@ extension MessageService {
       // `clearRetryingToSent` rolls any `.retrying` status back to `.sent`
       // and is terminal-safe: it no-ops if the checker already failed the
       // row in the loop's await-gap, so the row stays `.failed` there.
-      let movedToSent = try await dataStore.clearRetryingToSent(id: messageID)
-      if movedToSent {
-        statusEventBroadcaster.yield(.statusResolved(messageID: messageID, status: .sent, roundTripTime: nil))
+      //
+      // A message in a persistent-retry round stays at `.retrying` instead, so its
+      // "n/N" round counter does not vanish during the ACK wait.
+      if let persistentRetry, let held = await persistentRetry.holdRetryingStatus(for: messageID) {
+        statusEventBroadcaster.yield(.retrying(messageID: messageID, attempt: held.round - 1, maxAttempts: held.maxRounds))
+      } else {
+        let movedToSent = try await dataStore.clearRetryingToSent(id: messageID)
+        if movedToSent {
+          statusEventBroadcaster.yield(.statusResolved(messageID: messageID, status: .sent, roundTripTime: nil))
+        }
       }
     }
     await checkAndNotifyRoutingChange(
