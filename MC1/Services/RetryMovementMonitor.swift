@@ -17,6 +17,11 @@ final class RetryMovementMonitor: NSObject, CLLocationManagerDelegate {
   private let locationManager = CLLocationManager()
   private var anchor: CLLocation?
   private var isMonitoring = false
+  private var lastTriggerAt: Date?
+
+  /// Minimum time between movement-triggered retries, so GPS jitter or a fast
+  /// drive cannot burn through attempts back to back.
+  private static let cooldown: TimeInterval = 120
 
   var onMoved: (() -> Void)?
 
@@ -68,7 +73,10 @@ final class RetryMovementMonitor: NSObject, CLLocationManagerDelegate {
   }
 
   private func handle(_ location: CLLocation) {
-    guard isMonitoring, location.horizontalAccuracy >= 0 else { return }
+    // Only trust fresh, reasonably precise fixes; the first fix after starting is
+    // often a stale cached one that would make a false "moved" against the next.
+    guard isMonitoring, location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 100,
+          abs(location.timestamp.timeIntervalSinceNow) < 15 else { return }
     guard let anchor else {
       self.anchor = location
       return
@@ -76,6 +84,8 @@ final class RetryMovementMonitor: NSObject, CLLocationManagerDelegate {
     // Ignore fixes too imprecise to tell a real move from drift.
     let slack = max(Self.threshold, location.horizontalAccuracy)
     guard location.distance(from: anchor) >= slack else { return }
+    if let lastTriggerAt, Date().timeIntervalSince(lastTriggerAt) < Self.cooldown { return }
+    lastTriggerAt = Date()
     logger.info("Moved \(Int(location.distance(from: anchor))) m; triggering retry")
     self.anchor = location
     onMoved?()
