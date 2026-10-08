@@ -66,6 +66,11 @@ public actor PersistentRetryService {
     }
   }
 
+  /// Whether the message was opted in to persistent retry.
+  public func isArmed(_ messageID: UUID) async -> Bool {
+    (try? await dataStore.fetchPersistentRetry(messageID: messageID)) != nil
+  }
+
   /// Backoff rounds already started for a message; 0 when it is not armed.
   public func round(for messageID: UUID) async -> Int {
     (try? await dataStore.fetchPersistentRetry(messageID: messageID))?.round ?? 0
