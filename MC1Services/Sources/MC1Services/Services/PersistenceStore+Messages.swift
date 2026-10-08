@@ -441,6 +441,48 @@ public extension PersistenceStore {
     return true
   }
 
+  /// Fails outgoing DMs left mid-send by a crash or kill. ACK tracking and the send
+  /// loop live in memory only, so after a restart nothing would ever settle them and
+  /// the bubble would spin forever. Messages still backed by a queued send or an armed
+  /// persistent retry are left alone, as are very recent ones. Returns the count failed.
+  @discardableResult
+  func failOrphanedInFlightDMs(radioID: UUID, olderThan age: TimeInterval = 120) throws -> Int {
+    let targetRadioID = radioID
+    let outgoing = MessageDirection.outgoing.rawValue
+    let predicate = #Predicate<Message> { message in
+      message.radioID == targetRadioID &&
+        message.directionRawValue == outgoing &&
+        message.contactID != nil
+    }
+    var descriptor = FetchDescriptor(predicate: predicate, sortBy: [SortDescriptor(\Message.createdAt, order: .reverse)])
+    descriptor.fetchLimit = 200
+    let inFlight: Set<Int> = [
+      MessageStatus.pending.rawValue,
+      MessageStatus.sending.rawValue,
+      MessageStatus.retrying.rawValue,
+    ]
+    let cutoff = Date().addingTimeInterval(-age)
+    let candidates = try modelContext.fetch(descriptor)
+      .filter { inFlight.contains($0.statusRawValue) && $0.createdAt < cutoff }
+    guard !candidates.isEmpty else { return 0 }
+
+    let queued = Set(try modelContext.fetch(FetchDescriptor<PendingSend>(
+      predicate: #Predicate { $0.radioID == targetRadioID }
+    )).map(\.messageID))
+    let armed = Set(try modelContext.fetch(FetchDescriptor<PersistentRetry>(
+      predicate: #Predicate { $0.radioID == targetRadioID }
+    )).map(\.messageID))
+
+    var failed = 0
+    for message in candidates where !queued.contains(message.id) && !armed.contains(message.id) {
+      message.status = .failed
+      message.failureSeen = false
+      failed += 1
+    }
+    if failed > 0 { try modelContext.save() }
+    return failed
+  }
+
   /// Clears a retry-loop status (`.retrying`/`.pending`) back to `.sent` when
   /// the app-layer retry budget is spent but the end-to-end ACK may still
   /// arrive within `ackGiveUpWindow`.
