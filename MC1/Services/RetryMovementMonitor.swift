@@ -37,19 +37,23 @@ final class RetryMovementMonitor: NSObject, CLLocationManagerDelegate {
     guard !isMonitoring else { return }
     switch locationManager.authorizationStatus {
     case .notDetermined:
+      // Updates begin once the user answers; see locationManagerDidChangeAuthorization.
       locationManager.requestWhenInUseAuthorization()
     case .authorizedWhenInUse:
       locationManager.requestAlwaysAuthorization()
     case .denied, .restricted:
-      logger.info("Location denied; movement retry unavailable")
+      logger.info("Location unavailable; time-based retry only")
       return
     default:
       break
     }
     isMonitoring = true
     anchor = nil
-    locationManager.allowsBackgroundLocationUpdates = true
-    locationManager.showsBackgroundLocationIndicator = true
+    // Setting this without the background mode declared aborts the app.
+    if Self.declaresLocationBackgroundMode {
+      locationManager.allowsBackgroundLocationUpdates = true
+      locationManager.showsBackgroundLocationIndicator = true
+    }
     locationManager.startUpdatingLocation()
     logger.info("Movement monitoring started")
   }
@@ -59,8 +63,20 @@ final class RetryMovementMonitor: NSObject, CLLocationManagerDelegate {
     isMonitoring = false
     anchor = nil
     locationManager.stopUpdatingLocation()
-    locationManager.allowsBackgroundLocationUpdates = false
+    if Self.declaresLocationBackgroundMode { locationManager.allowsBackgroundLocationUpdates = false }
     logger.info("Movement monitoring stopped")
+  }
+
+  private static var declaresLocationBackgroundMode: Bool {
+    let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String]
+    return modes?.contains("location") == true
+  }
+
+  /// Location was turned off or revoked mid-wait: stop quietly; the timer still runs.
+  nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    let status = manager.authorizationStatus
+    guard status == .denied || status == .restricted else { return }
+    Task { @MainActor in self.stop() }
   }
 
   nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -69,6 +85,7 @@ final class RetryMovementMonitor: NSObject, CLLocationManagerDelegate {
   }
 
   nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    // Failures (no fix, denied) just mean no movement trigger; never retry on them.
     Task { @MainActor in self.logger.warning("Location error: \(error.localizedDescription)") }
   }
 
