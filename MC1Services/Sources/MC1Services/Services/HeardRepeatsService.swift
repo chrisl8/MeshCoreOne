@@ -150,6 +150,7 @@ public actor HeardRepeatsService {
         radioID: radioID,
         recipientHash: recipientHash
       ) else { return nil }
+      SendTraceLog.record("echo -> msg=\(message.id.uuidString.prefix(8)) text=\(message.text.prefix(12)) rx=\(entry.receivedAt.formatted(date: .omitted, time: .standard)) hops=\(entry.pathLength) snr=\(entry.snr.map { String($0) } ?? "-")")
       return try await recordSentEcho(message: message, entry: entry)
     } catch {
       logger.error("Failed to process DM echo: \(error.localizedDescription)")
