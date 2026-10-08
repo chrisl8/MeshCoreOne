@@ -368,6 +368,13 @@ extension MessageService {
       }
     }
 
+    // An armed message's first drain is two sends: the saved path, then flood. The
+    // backoff rounds take it from there, one send each.
+    var isArmedFirstDrain = false
+    if !isBackoffSend, let persistentRetry {
+      isArmedFirstDrain = await persistentRetry.isArmed(messageID)
+    }
+
     let wireText = backoffRound > 0 ? Self.backoffWireText(existingMessage) : existingMessage.text
 
     do {
@@ -380,7 +387,8 @@ extension MessageService {
         timestamp: wireTimestamp,
         timestampRaw: wireTimestampRaw,
         timeout: nil,
-        maxAttempts: isBackoffSend ? 1 : nil
+        maxAttempts: isBackoffSend ? 1 : (isArmedFirstDrain ? 2 : nil),
+        floodAfter: isArmedFirstDrain ? 1 : nil
       )
 
       // Bump only on a confirmed successful resend so sendCount counts
@@ -463,12 +471,14 @@ extension MessageService {
     timestamp: Date,
     timestampRaw: UInt32,
     timeout: TimeInterval?,
-    maxAttempts: Int? = nil
+    maxAttempts: Int? = nil,
+    floodAfter: Int? = nil
   ) async throws -> MessageSentInfo? {
     var attempts = 0
     var floodAttempts = 0
     var isFloodMode = false
     let attemptLimit = min(maxAttempts ?? config.maxAttempts, config.maxAttempts)
+    let floodAfter = floodAfter ?? config.floodAfter
 
     while attempts < attemptLimit, !isFloodMode || floodAttempts < config.maxFloodAttempts {
       // Check for task cancellation
@@ -482,13 +492,13 @@ extension MessageService {
           id: messageID,
           status: .retrying,
           retryAttempt: attempts - 1,
-          maxRetryAttempts: config.maxAttempts - 1
+          maxRetryAttempts: attemptLimit - 1
         )
-        statusEventBroadcaster.yield(.retrying(messageID: messageID, attempt: attempts - 1, maxAttempts: config.maxAttempts - 1))
+        statusEventBroadcaster.yield(.retrying(messageID: messageID, attempt: attempts - 1, maxAttempts: attemptLimit - 1))
       }
 
       // Switch to flood routing after floodAfter direct attempts
-      if attempts == config.floodAfter, !isFloodMode {
+      if attempts == floodAfter, !isFloodMode {
         logger.info("Resetting path to flood after \(attempts) failed attempts")
         do {
           try await session.resetPath(publicKey: publicKey)
