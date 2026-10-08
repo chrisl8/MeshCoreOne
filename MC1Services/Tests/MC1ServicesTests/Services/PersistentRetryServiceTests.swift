@@ -97,7 +97,7 @@ struct PersistentRetryServiceTests {
   }
 
   @Test
-  func `moving cuts a waiting retry short without using a round`() async throws {
+  func `moving cuts a waiting retry short and keeps it a backoff send`() async throws {
     let radioID = UUID()
     let contactID = UUID()
     let messageID = UUID()
@@ -118,7 +118,7 @@ struct PersistentRetryServiceTests {
     #expect(await queued.envelopes.map(\.messageID) == [messageID])
     let record = try await store.fetchPersistentRetry(messageID: messageID)
     #expect(record?.nextRetryAt == nil)
-    #expect(record?.round == 0)
+    #expect(record?.round == 1)
   }
 
   @Test
