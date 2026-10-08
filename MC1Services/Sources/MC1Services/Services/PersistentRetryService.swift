@@ -133,6 +133,38 @@ public actor PersistentRetryService {
     } catch {
       logger.error("Failed to hydrate persistent retries: \(error.localizedDescription)")
     }
+    await resumeAbandoned(radioID: radioID)
+  }
+
+  /// An armed message whose attempt was in flight when the app stopped has no timer
+  /// and no ACK tracking (both live in memory), so nothing would ever retry or fail
+  /// it. Treat its ACK window as expired: start the next round, or fail it if the
+  /// rounds are used up.
+  private func resumeAbandoned(radioID: UUID) async {
+    do {
+      for record in try await dataStore.fetchIdlePersistentRetries(radioID: radioID) {
+        let messageID = record.messageID
+        // Still queued to send: the queue will drive it.
+        if try await !dataStore.fetchPendingSendsForMessage(messageID: messageID).isEmpty { continue }
+        guard let message = try await dataStore.fetchMessage(id: messageID),
+              message.status != .delivered, message.status != .failed else {
+          try await dataStore.clearPersistentRetry(messageID: messageID)
+          continue
+        }
+        if let plan = await planRetry(for: messageID) {
+          try await dataStore.updateMessageRetryStatus(
+            id: messageID,
+            status: .retrying,
+            retryAttempt: plan.round - 1,
+            maxRetryAttempts: plan.maxRounds
+          )
+        } else {
+          _ = try await dataStore.updateMessageStatusUnlessDelivered(id: messageID, status: .failed)
+        }
+      }
+    } catch {
+      logger.error("Failed to resume abandoned persistent retries: \(error.localizedDescription)")
+    }
   }
 
   func shutdown() {

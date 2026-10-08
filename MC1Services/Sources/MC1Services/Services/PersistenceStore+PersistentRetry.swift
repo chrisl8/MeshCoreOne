@@ -36,6 +36,15 @@ extension PersistenceStore {
     return try modelContext.fetch(FetchDescriptor(predicate: predicate)).map(PersistentRetryDTO.init(from:))
   }
 
+  /// Armed messages with no timer running: in flight, or abandoned by a restart.
+  func fetchIdlePersistentRetries(radioID: UUID) throws -> [PersistentRetryDTO] {
+    let targetRadioID = radioID
+    let predicate = #Predicate<PersistentRetry> { row in
+      row.radioID == targetRadioID && row.nextRetryAt == nil
+    }
+    return try modelContext.fetch(FetchDescriptor(predicate: predicate)).map(PersistentRetryDTO.init(from:))
+  }
+
   private func fetchPersistentRetryModel(messageID: UUID) throws -> PersistentRetry? {
     let target = messageID
     let predicate = #Predicate<PersistentRetry> { $0.messageID == target }

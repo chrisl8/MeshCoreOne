@@ -121,6 +121,28 @@ struct PersistentRetryServiceTests {
     #expect(record?.round == 0)
   }
 
+  @Test
+  func `hydrate restarts the backoff for an attempt the app lost track of`() async throws {
+    let radioID = UUID()
+    let contactID = UUID()
+    let messageID = UUID()
+    let (store, service) = try makeStoreAndService()
+    try await store.saveMessage(.testDirectMessage(
+      id: messageID,
+      radioID: radioID,
+      contactID: contactID,
+      status: .sent
+    ))
+    await service.arm(messageID: messageID, contactID: contactID, radioID: radioID)
+
+    await service.hydrate(radioID: radioID)
+
+    let record = try await store.fetchPersistentRetry(messageID: messageID)
+    #expect(record?.round == 1)
+    #expect(record?.nextRetryAt != nil)
+    #expect(try await store.fetchMessage(id: messageID)?.status == .retrying)
+  }
+
   // MARK: - Helpers
 
   private final class Clock: @unchecked Sendable {
