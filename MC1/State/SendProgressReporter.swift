@@ -118,7 +118,13 @@ final class SendProgressReporter {
     switch tracked.progress.phase {
     case .retrying, .flooding, .waiting:
       banner = PendingBanner(contactID: tracked.contactID, progress: tracked.progress)
-    case .sent, .delivered, .failed:
+    case .sent:
+      // Between backoff rounds the message sits at "sent"; keep the banner up until
+      // it is delivered or fails, so it doesn't blink out during the ACK wait.
+      if banner?.contactID == tracked.contactID {
+        banner = PendingBanner(contactID: tracked.contactID, progress: tracked.progress)
+      }
+    case .delivered, .failed:
       banner = nil
     }
     await liveActivityManager.updateSendProgress(tracked.progress)

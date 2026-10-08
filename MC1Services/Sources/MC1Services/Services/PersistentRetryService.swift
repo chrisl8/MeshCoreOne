@@ -107,8 +107,8 @@ public actor PersistentRetryService {
   }
 
   /// Cuts every waiting backoff short because the user has moved. The retry does
-  /// not use up a round: a new location may be in range, so it gets a fresh try
-  /// without shortening the schedule if it still fails.
+  /// not use up a round (beyond the first): a new location may be in range, so it
+  /// gets a fresh try without shortening the schedule if it still fails.
   public func retryNowForMovement() async {
     for messageID in Array(timers.keys) {
       timers[messageID]?.cancel()
@@ -191,7 +191,8 @@ public actor PersistentRetryService {
         return
       }
       guard let record = try await dataStore.fetchPersistentRetry(messageID: messageID) else { return }
-      let round = refundRound ? max(record.round - 1, 0) : record.round
+      // Floor of 1 keeps "round > 0 means backoff send" true for the send that follows.
+      let round = refundRound ? max(record.round - 1, 1) : record.round
       try await dataStore.updatePersistentRetry(messageID: messageID, round: round, nextRetryAt: nil)
 
       // Same path as the manual retry button: one transaction replaces any stale
