@@ -368,12 +368,15 @@ extension MessageService {
       }
     }
 
-    // An armed message's first drain is two sends: the saved path, then flood. The
+    // An armed message's first drain is two sends: the saved path, then flood. If the
+    // contact is already on flood there is nothing to fall back to, so just one. The
     // backoff rounds take it from there, one send each.
     var isArmedFirstDrain = false
     if !isBackoffSend, let persistentRetry {
       isArmedFirstDrain = await persistentRetry.isArmed(messageID)
     }
+
+    let alreadyFlood = contact.outPathLength == PacketBuilder.floodPathSentinel
 
     let wireText = backoffRound > 0 ? Self.backoffWireText(existingMessage) : existingMessage.text
 
@@ -387,7 +390,7 @@ extension MessageService {
         timestamp: wireTimestamp,
         timestampRaw: wireTimestampRaw,
         timeout: nil,
-        maxAttempts: isBackoffSend ? 1 : (isArmedFirstDrain ? 2 : nil),
+        maxAttempts: isBackoffSend ? 1 : (isArmedFirstDrain ? (alreadyFlood ? 1 : 2) : nil),
         floodAfter: isArmedFirstDrain ? 1 : nil
       )
 
