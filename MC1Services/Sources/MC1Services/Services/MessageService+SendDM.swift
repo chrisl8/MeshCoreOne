@@ -95,6 +95,7 @@ public extension MessageService {
       await notePlainTextLease(sendLease)
 
       do {
+        SendTraceLog.record("single msg=\(messageID.uuidString.prefix(8)) ts=\(timestamp)")
         sentInfo = try await withPoolBackoff(transientCode: FirmwareDeviceErrorCode.directMessageTableFull, config: config.poolBackoff, logger: logger) {
           try await session.sendMessage(
             to: contact.publicKey,
