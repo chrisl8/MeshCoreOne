@@ -93,8 +93,17 @@ public extension MessageService {
   /// earlier attempt still marks the message delivered; its deadline is pushed past
   /// the wait, and the retry's own send refreshes it.
   private func deferToPersistentRetry(messageID: UUID, now: Date) async throws -> Bool {
-    guard let persistentRetry,
-          let plan = await persistentRetry.planRetry(for: messageID),
+    guard let persistentRetry else { return false }
+
+    // The retry is queued behind other sends: keep waiting for its turn instead of
+    // planning another round, which would skip a round and mislabel the send.
+    if await persistentRetry.isArmed(messageID), await persistentRetry.hasQueuedSend(messageID), pendingAcks[messageID]?.isDelivered == false {
+      pendingAcks[messageID]?.sentAt = now
+      pendingAcks[messageID]?.timeout = config.ackGiveUpWindow
+      return true
+    }
+
+    guard let plan = await persistentRetry.planRetry(for: messageID),
           let tracking = pendingAcks[messageID], !tracking.isDelivered else { return false }
 
     pendingAcks[messageID]?.sentAt = now
