@@ -347,6 +347,7 @@ public final class ServiceContainer {
   ) async {
     guard eventMonitoringState == .starting else { return }
     await messageService.setPersistentRetry(persistentRetryService)
+    _ = try? await dataStore.failOrphanedInFlightDMs(radioID: radioID)
     await persistentRetryService.hydrate(radioID: radioID)
     await heardRepeatsService.configure(
       radioID: radioID,
