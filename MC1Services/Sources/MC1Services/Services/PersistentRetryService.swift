@@ -71,6 +71,27 @@ public actor PersistentRetryService {
     (try? await dataStore.fetchPersistentRetry(messageID: messageID)) != nil
   }
 
+  /// For an armed message between backoff sends: puts the bubble back at
+  /// "retrying n/N" so the round counter stays visible through the ACK wait instead
+  /// of dropping to a bare "sent" spinner. Returns the round and total, or nil when
+  /// the message is not in a backoff round.
+  func holdRetryingStatus(for messageID: UUID) async -> (round: Int, maxRounds: Int)? {
+    do {
+      guard let record = try await dataStore.fetchPersistentRetry(messageID: messageID),
+            record.round > 0 else { return nil }
+      try await dataStore.updateMessageRetryStatus(
+        id: messageID,
+        status: .retrying,
+        retryAttempt: record.round - 1,
+        maxRetryAttempts: policy.maxRounds
+      )
+      return (record.round, policy.maxRounds)
+    } catch {
+      logger.error("Failed to hold retrying status for \(messageID): \(error.localizedDescription)")
+      return nil
+    }
+  }
+
   /// Backoff rounds already started for a message; 0 when it is not armed.
   public func round(for messageID: UUID) async -> Int {
     (try? await dataStore.fetchPersistentRetry(messageID: messageID))?.round ?? 0
