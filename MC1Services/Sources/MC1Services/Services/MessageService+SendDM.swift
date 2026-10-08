@@ -353,6 +353,7 @@ extension MessageService {
     // harder": one send, and the stored timestamp stays at the original send time
     // so the bubble doesn't appear to move.
     let backoffRound = await persistentRetry?.round(for: messageID) ?? 0
+    SendTraceLog.record("drain msg=\(messageID.uuidString.prefix(8)) round=\(backoffRound) preserveTimestamp=\(preserveTimestamp) resend=\(isResend)")
     let isBackoffSend = backoffRound > 0
     let wireTimestamp: Date
     let wireTimestampRaw: UInt32
@@ -542,6 +543,7 @@ extension MessageService {
 
       let sentInfo: MessageSentInfo
       do {
+        SendTraceLog.record("loop msg=\(messageID.uuidString.prefix(8)) attempt=\(attempts + 1)/\(attemptLimit) flood=\(isFloodMode) ts=\(timestampRaw)")
         sentInfo = try await withPoolBackoff(transientCode: FirmwareDeviceErrorCode.directMessageTableFull, config: config.poolBackoff, logger: logger) {
           try await session.sendMessage(
             to: publicKey.prefix(6),
