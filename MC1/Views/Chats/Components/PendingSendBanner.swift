@@ -25,12 +25,14 @@ struct PendingSendBanner: View {
           .font(.caption.weight(.semibold))
       }
       .foregroundStyle(.white)
-      .padding(.horizontal, 16)
+      .padding(.horizontal, 14)
       .padding(.vertical, 10)
       .frame(maxWidth: .infinity)
-      .background(Color.orange)
+      .background(Color.orange, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
     .buttonStyle(.plain)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 6)
     .accessibilityElement(children: .combine)
     .accessibilityHint("Opens the conversation")
   }
