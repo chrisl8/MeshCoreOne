@@ -67,13 +67,13 @@ struct SendProgress: Codable, Hashable {
 
   private var heardText: String {
     switch repeatsHeard {
-    case 0: "no repeats heard"
-    case 1: "1 repeater heard"
-    default: "\(repeatsHeard) repeaters heard"
+    case 0: "no echoes heard"
+    case 1: "1 echo heard"
+    default: "\(repeatsHeard) echoes heard"
     }
   }
 
-  /// One-line status, e.g. "Retry 2/4 · 1 repeater heard".
+  /// One-line status, e.g. "Retry 2/4 · 1 echo heard".
   var statusText: String {
     switch phase {
     case .sent: "Sent · waiting for ACK" + (repeatsHeard > 0 ? " · \(heardText)" : "")
