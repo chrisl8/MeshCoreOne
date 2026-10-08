@@ -348,6 +348,12 @@ extension MessageService {
     // auto-retry passes preserveTimestamp: true so the duplicate landing
     // on a recipient that already saw the first send gets caught by
     // their dedup ring rather than rendered as a second copy.
+    //
+    // A persistent-retry backoff round (round > 0) is "try again later", not "try
+    // harder": one send, and the stored timestamp stays at the original send time
+    // so the bubble doesn't appear to move.
+    let backoffRound = await persistentRetry?.round(for: messageID) ?? 0
+    let isBackoffSend = backoffRound > 0
     let wireTimestamp: Date
     let wireTimestampRaw: UInt32
     if preserveTimestamp {
@@ -356,10 +362,12 @@ extension MessageService {
     } else {
       wireTimestamp = Date()
       wireTimestampRaw = UInt32(wireTimestamp.timeIntervalSince1970)
-      try await dataStore.updateMessageTimestamp(id: messageID, timestamp: wireTimestampRaw)
+      if !isBackoffSend {
+        try await dataStore.updateMessageTimestamp(id: messageID, timestamp: wireTimestampRaw)
+      }
     }
 
-    let wireText = await wireTextForRetry(existingMessage)
+    let wireText = backoffRound > 0 ? Self.backoffWireText(existingMessage) : existingMessage.text
 
     do {
       let sentInfo = try await sendDirectMessageWithRetryLoop(
@@ -370,7 +378,8 @@ extension MessageService {
         text: wireText,
         timestamp: wireTimestamp,
         timestampRaw: wireTimestampRaw,
-        timeout: nil
+        timeout: nil,
+        maxAttempts: isBackoffSend ? 1 : nil
       )
 
       // Bump only on a confirmed successful resend so sendCount counts
@@ -416,8 +425,7 @@ extension MessageService {
   /// goes out as `[sent 14:32] text`, so a recipient who gets it late can see when
   /// it was first attempted. The stored text is untouched. The prefix is skipped
   /// when it would push the message over the protocol limit.
-  private func wireTextForRetry(_ message: MessageDTO) async -> String {
-    guard let persistentRetry, await persistentRetry.round(for: message.id) > 0 else { return message.text }
+  private static func backoffWireText(_ message: MessageDTO) -> String {
     let stamp = message.createdAt.formatted(date: .omitted, time: .shortened)
     let prefixed = "[sent \(stamp)] \(message.text)"
     guard prefixed.utf8.count <= ProtocolLimits.maxDirectMessageLength else { return message.text }
@@ -459,13 +467,15 @@ extension MessageService {
     text: String,
     timestamp: Date,
     timestampRaw: UInt32,
-    timeout: TimeInterval?
+    timeout: TimeInterval?,
+    maxAttempts: Int? = nil
   ) async throws -> MessageSentInfo? {
     var attempts = 0
     var floodAttempts = 0
     var isFloodMode = false
+    let attemptLimit = min(maxAttempts ?? config.maxAttempts, config.maxAttempts)
 
-    while attempts < config.maxAttempts, !isFloodMode || floodAttempts < config.maxFloodAttempts {
+    while attempts < attemptLimit, !isFloodMode || floodAttempts < config.maxFloodAttempts {
       // Check for task cancellation
       guard !Task.isCancelled else {
         throw CancellationError()
