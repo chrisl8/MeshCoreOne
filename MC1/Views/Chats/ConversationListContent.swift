@@ -74,14 +74,10 @@ struct ConversationListContent: View {
   @ViewBuilder
   private var pendingSendBanner: some View {
     if let banner = appState.sendProgressReporter?.banner,
-       let conversation = (favoriteConversations + otherConversations)
+       let conversation = (pinnedConversations + otherConversations)
          .first(where: { $0.id == banner.contactID }) {
       PendingSendBanner(progress: banner.progress) {
-        let route = ChatRoute(conversation: conversation)
-        switch mode {
-        case let .selection(selection): selection.wrappedValue = route
-        case let .navigation(onNavigate, _): onNavigate(route)
-        }
+        onSelect(ChatRoute(conversation: conversation))
       }
       .transition(.move(edge: .top).combined(with: .opacity))
     }
