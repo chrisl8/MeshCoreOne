@@ -92,6 +92,8 @@ final class SendProgressReporter {
       await update(messageID: current.messageID) { $0.phase = .flooding }
     case let .failed(messageID):
       await update(messageID: messageID) { $0.phase = .failed }
+    case .reactionAccepted:
+      break
     }
   }
 
