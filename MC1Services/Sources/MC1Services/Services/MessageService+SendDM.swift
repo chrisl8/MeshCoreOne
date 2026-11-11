@@ -596,7 +596,13 @@ public extension MessageService {
         messageID: messageID, radioID: radioID, pendingSendID: pendingSendID
       )
       if saved, await (try? dataStore.fetchMessage(id: messageID))?.status == .sent {
-        statusEventBroadcaster.yield(.statusResolved(messageID: messageID, status: .sent, roundTripTime: nil))
+        // A message in a persistent-retry round stays at `.retrying` instead, so its
+        // "n/N" round counter does not vanish during the ACK wait.
+        if let persistentRetry, let held = await persistentRetry.holdRetryingStatus(for: messageID) {
+          statusEventBroadcaster.yield(.retrying(messageID: messageID, attempt: held.round - 1, maxAttempts: held.maxRounds))
+        } else {
+          statusEventBroadcaster.yield(.statusResolved(messageID: messageID, status: .sent, roundTripTime: nil))
+        }
       }
     }
     await checkAndNotifyRoutingChange(
