@@ -17,7 +17,8 @@ extension MessageService {
     sendLease: PlainTextSendGate.Lease?,
     waitForAcknowledgement: Bool,
     pendingSendID: UUID? = nil,
-    preserveTimestamp: Bool = true
+    preserveTimestamp: Bool = true,
+    commitStoredTimestamp: Bool = true
   ) async throws -> Data? {
     let maxRetryAttempts = budget.totalAttempts - 1
     let sendDate = Date(timeIntervalSince1970: TimeInterval(timestamp))
@@ -142,9 +143,13 @@ extension MessageService {
       }
       guard pendingAcks[messageID]?.isAwaitingAck == true else { return lastExpectedAck }
       if commitWireTimestamp {
-        replacedDeliveryTimestamp = try await dataStore.commitOutgoingDirectMessageTimestamp(
-          id: messageID, timestamp: timestamp
-        )
+        // A persistent-retry backoff send leaves the stored time alone so the bubble keeps
+        // its original send time; the durable ACK owner keeps this attempt's codes.
+        if commitStoredTimestamp {
+          replacedDeliveryTimestamp = try await dataStore.commitOutgoingDirectMessageTimestamp(
+            id: messageID, timestamp: timestamp
+          )
+        }
         commitWireTimestamp = false
       }
 

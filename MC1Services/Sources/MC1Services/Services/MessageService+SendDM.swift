@@ -340,8 +340,8 @@ public extension MessageService {
     }
 
     // Persistent retry. A backoff round (round > 0) is "try again later", not "try
-    // harder": one send, and the stored timestamp is put back to the original send
-    // time afterwards so the bubble doesn't appear to move. An armed message's first
+    // harder": one send, and the stored timestamp is never overwritten, so the
+    // bubble keeps its original send time. An armed message's first
     // drain is two sends (saved path, then flood), or one if the contact is already
     // on flood. Backoff rounds take it from there.
     let backoffRound = await persistentRetry?.round(for: messageID) ?? 0
@@ -372,13 +372,9 @@ public extension MessageService {
         sendLease: sendLease,
         waitForAcknowledgement: existingMessage.reactionTargetMessageID == nil,
         pendingSendID: pendingSendID,
-        preserveTimestamp: preserveTimestamp
+        preserveTimestamp: preserveTimestamp,
+        commitStoredTimestamp: !isBackoffSend
       )
-
-      if isBackoffSend, !preserveTimestamp,
-         await (try? dataStore.fetchMessage(id: messageID))?.status != .delivered {
-        try? await dataStore.updateMessageTimestamp(id: messageID, timestamp: existingMessage.timestamp)
-      }
 
       // Bump only on a confirmed successful resend so sendCount counts
       // landed user-initiated sends, not queue-driven attempts;
