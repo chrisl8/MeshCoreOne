@@ -233,7 +233,8 @@ public extension MessageService {
       text: text,
       timestamp: timestamp,
       textType: textType,
-      replyToID: replyToID
+      replyToID: replyToID,
+      persistentRetryArmed: keepTrying
     )
     try await dataStore.saveMessage(messageDTO)
     try await dataStore.updateContactLastMessage(contactID: contact.id, date: messageDTO.date)
@@ -623,7 +624,8 @@ public extension MessageService {
     text: String,
     timestamp: UInt32,
     textType: TextType,
-    replyToID: UUID?
+    replyToID: UUID?,
+    persistentRetryArmed: Bool = false
   ) -> MessageDTO {
     let message = Message(
       id: id,
@@ -634,7 +636,8 @@ public extension MessageService {
       directionRawValue: MessageDirection.outgoing.rawValue,
       statusRawValue: MessageStatus.pending.rawValue,
       textTypeRawValue: textType.rawValue,
-      replyToID: replyToID
+      replyToID: replyToID,
+      persistentRetryArmed: persistentRetryArmed
     )
     return MessageDTO(from: message)
   }

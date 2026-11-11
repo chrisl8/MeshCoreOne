@@ -44,6 +44,8 @@ public struct MessageFooter: Sendable, Hashable {
   public let retryAttempt: Int
   public let maxRetryAttempts: Int
   public let sendCount: Int
+  /// The user armed persistent retry for this send.
+  public let persistentRetryArmed: Bool
 
   /// True when `regionMatchNames` has more than one entry. Derived, not stored.
   public var regionIsAmbiguous: Bool {
@@ -65,7 +67,8 @@ public struct MessageFooter: Sendable, Hashable {
     showHeardCount: Bool = false,
     retryAttempt: Int,
     maxRetryAttempts: Int,
-    sendCount: Int
+    sendCount: Int,
+    persistentRetryArmed: Bool = false
   ) {
     self.showHop = showHop
     self.hopCount = hopCount
@@ -82,6 +85,7 @@ public struct MessageFooter: Sendable, Hashable {
     self.retryAttempt = retryAttempt
     self.maxRetryAttempts = maxRetryAttempts
     self.sendCount = sendCount
+    self.persistentRetryArmed = persistentRetryArmed
   }
 
   /// Returns a new footer with `status` overridden. Eliminates the multi-field
@@ -102,7 +106,8 @@ public struct MessageFooter: Sendable, Hashable {
       showHeardCount: showHeardCount,
       retryAttempt: retryAttempt,
       maxRetryAttempts: maxRetryAttempts,
-      sendCount: sendCount
+      sendCount: sendCount,
+      persistentRetryArmed: persistentRetryArmed
     )
   }
 }
