@@ -96,7 +96,8 @@ public actor PersistentRetryService {
   /// checker must not start another round then: the retry it would plan for is the
   /// one already waiting its turn in the send queue.
   func hasQueuedSend(_ messageID: UUID) async -> Bool {
-    ((try? await dataStore.fetchPendingSendsForMessage(messageID: messageID)) ?? []).isEmpty == false
+    // A row with ACK metadata is delivery tracking after the command was issued, not queued work.
+    ((try? await dataStore.fetchPendingSendsForMessage(messageID: messageID)) ?? []).contains { $0.ackCodes == nil }
   }
 
   /// Backoff rounds already started for a message; 0 when it is not armed.
