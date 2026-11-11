@@ -253,7 +253,8 @@ public enum MessageFragmentBuilder {
       showHeardCount: showHeardCount,
       retryAttempt: message.retryAttempt,
       maxRetryAttempts: message.maxRetryAttempts,
-      sendCount: message.sendCount
+      sendCount: message.sendCount,
+      persistentRetryArmed: message.persistentRetryArmed
     )
   }
 

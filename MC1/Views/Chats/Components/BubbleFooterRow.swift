@@ -65,6 +65,9 @@ struct BubbleFooterRow: View {
       )))
     }
 
+    if footer.persistentRetryArmed, footer.showStatusRow {
+      badges.append(AnyView(BubblePersistentRetryFooter(color: timeColor)))
+    }
     if footer.heardRepeats > 0 && (footer.showStatusRow || footer.showHeardCount) {
       let repeatCount = footer.showStatusRow
         ? footer.heardRepeats
@@ -219,6 +222,20 @@ enum MessageRegionAccessibility {
       return L10n.Chats.Chats.Message.Region.ambiguousAccessibilityLabel(list)
     }
     return L10n.Chats.Chats.Message.Region.accessibilityLabel(regionName)
+  }
+}
+
+/// Marks an outgoing DM the user armed for persistent retry. Stays after the retry
+/// finishes, so a delivered or failed message still shows it was armed.
+private struct BubblePersistentRetryFooter: View {
+  let color: Color
+
+  var body: some View {
+    Image(systemName: "clock.arrow.circlepath")
+      .font(.caption2)
+      .foregroundStyle(color)
+      .footerChip(color: color)
+      .accessibilityLabel(L10n.Chats.Chats.Input.PersistentRetry.label)
   }
 }
 
