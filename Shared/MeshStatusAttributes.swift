@@ -73,13 +73,14 @@ struct SendProgress: Codable, Hashable {
     }
   }
 
-  /// One-line status, e.g. "Retry 2/4 · 1 echo heard".
+  /// One-line status, e.g. "Send 3/5 · 1 echo heard". Counts the initial send as number 1,
+  /// the same way the message bubble does, so `retry` retries read as send `retry + 1`.
   var statusText: String {
     switch phase {
     case .sent: "Sent · waiting for ACK" + (repeatsHeard > 0 ? " · \(heardText)" : "")
-    case .retrying: "Retry \(retry)/\(maxRetries) · \(heardText)"
+    case .retrying: "Send \(retry + 1)/\(maxRetries + 1) · \(heardText)"
     case .flooding: "Flooding · \(heardText)"
-    case .waiting: "Retry \(retry)/\(maxRetries) at \(retryAt?.formatted(date: .omitted, time: .shortened) ?? "—") · \(heardText)"
+    case .waiting: "Send \(retry + 1)/\(maxRetries + 1) at \(retryAt?.formatted(date: .omitted, time: .shortened) ?? "—") · \(heardText)"
     case .delivered: "Delivered"
     case .failed: "Failed · \(heardText)"
     }
