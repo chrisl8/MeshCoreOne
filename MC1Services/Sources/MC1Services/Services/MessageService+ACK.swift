@@ -117,6 +117,7 @@ public extension MessageService {
       pendingAcks[messageID]?.sentAt = now
       pendingAcks[messageID]?.timeout = config.ackGiveUpWindow
       pendingAcks[messageID]?.resetOwner()
+      await releaseSendGateWhileWaiting(messageID: messageID)
       return true
     }
 
@@ -127,6 +128,7 @@ public extension MessageService {
     pendingAcks[messageID]?.timeout = plan.delay + config.ackGiveUpWindow
     // A saved owner pins the deadline; clear it so expiry follows the pushed-out window.
     pendingAcks[messageID]?.resetOwner()
+    await releaseSendGateWhileWaiting(messageID: messageID)
     try await dataStore.updateMessageRetryStatus(
       id: messageID,
       status: .retrying,
@@ -140,6 +142,15 @@ public extension MessageService {
       retryAt: plan.retryAt
     ))
     return true
+  }
+
+  /// The plain-text send gate stays owned until an ACK resolves. A message waiting out a
+  /// backoff must not hold it: the retry itself, and every other DM, would queue behind
+  /// a wait that only that retry can end.
+  private func releaseSendGateWhileWaiting(messageID: UUID) async {
+    guard let leaseID = pendingAcks[messageID]?.sendLeaseID else { return }
+    pendingAcks[messageID]?.sendLeaseID = nil
+    await settlePlainTextLease(leaseID)
   }
 
   /// Fails all pending messages that are awaiting ACK.
