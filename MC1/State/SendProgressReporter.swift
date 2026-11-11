@@ -15,8 +15,10 @@ final class SendProgressReporter {
     let progress: SendProgress
   }
 
-  /// Non-nil while the tracked DM is retrying, flooding, or waiting out a backoff.
+  /// Non-nil while a DM is retrying, flooding, or waiting out a backoff. It belongs to
+  /// one message: other DMs sending meanwhile neither replace nor clear it.
   private(set) var banner: PendingBanner?
+  private var bannerMessageID: UUID?
 
   /// Called when the tracked send enters or leaves the backoff wait.
   @ObservationIgnored var onWaitingChanged: ((Bool) -> Void)?
@@ -58,9 +60,10 @@ final class SendProgressReporter {
   func stop() {
     for task in tasks { task.cancel() }
     tasks.removeAll()
-    if current?.progress.phase == .waiting { onWaitingChanged?(false) }
+    if banner?.progress.phase == .waiting { onWaitingChanged?(false) }
     current = nil
     banner = nil
+    bannerMessageID = nil
   }
 
   private func handle(_ event: MessageStatusEvent) async {
@@ -107,28 +110,36 @@ final class SendProgressReporter {
   private func update(messageID: UUID, _ change: (inout SendProgress) -> Void) async {
     if current?.messageID != messageID {
       guard let tracked = await beginTracking(messageID: messageID) else { return }
-      if current?.progress.phase == .waiting { onWaitingChanged?(false) }
       current = tracked
     }
     guard var tracked = current, !tracked.progress.phase.isTerminal else { return }
     change(&tracked.progress)
     if tracked.progress.phase != .waiting { tracked.progress.retryAt = nil }
-    let wasWaiting = current?.progress.phase == .waiting
     current = tracked
-    let isWaiting = tracked.progress.phase == .waiting
-    if wasWaiting != isWaiting { onWaitingChanged?(isWaiting) }
+
+    let wasWaiting = banner?.progress.phase == .waiting
+    // The banner follows one message. Another DM may take it only when it is free.
+    let ownsBanner = bannerMessageID == nil || bannerMessageID == tracked.messageID
     switch tracked.progress.phase {
     case .retrying, .flooding, .waiting:
-      banner = PendingBanner(contactID: tracked.contactID, progress: tracked.progress)
+      if ownsBanner {
+        banner = PendingBanner(contactID: tracked.contactID, progress: tracked.progress)
+        bannerMessageID = tracked.messageID
+      }
     case .sent:
       // Between backoff rounds the message sits at "sent"; keep the banner up until
       // it is delivered or fails, so it doesn't blink out during the ACK wait.
-      if banner?.contactID == tracked.contactID {
+      if bannerMessageID == tracked.messageID {
         banner = PendingBanner(contactID: tracked.contactID, progress: tracked.progress)
       }
     case .delivered, .failed:
-      banner = nil
+      if bannerMessageID == tracked.messageID {
+        banner = nil
+        bannerMessageID = nil
+      }
     }
+    let isWaiting = banner?.progress.phase == .waiting
+    if wasWaiting != isWaiting { onWaitingChanged?(isWaiting) }
     await liveActivityManager.updateSendProgress(tracked.progress)
   }
 
