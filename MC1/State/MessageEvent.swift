@@ -31,6 +31,8 @@ enum MessageEvent: Equatable {
   case messageFailed(messageID: UUID)
   case messageRetrying(messageID: UUID, attempt: Int, maxAttempts: Int)
   case heardRepeatRecorded(messageID: UUID, count: Int)
+  /// CoreScope visibility check progressed; the row is already persisted, consumers reload it.
+  case corescopeUpdated(messageID: UUID)
   case reactionReceived(messageID: UUID, summary: String)
   /// Region reprocess rewrote dual region fields on these Message rows.
   /// Consumers call `enqueueReload` so open chats re-bake region footers.

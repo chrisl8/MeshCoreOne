@@ -134,6 +134,9 @@ public protocol MessagePersisting: Actor {
   ///   so they do not surface a `.failed` event for a delivered or absent row.
   func updateMessageStatusUnlessDelivered(id: UUID, status: MessageStatus) async throws -> Bool
 
+  /// Record the CoreScope visibility check result for an outgoing channel message.
+  func updateMessageCorescope(id: UUID, state: CorescopeState, heard: Int) async throws
+
   /// Clear a spent retry-loop status back to `.sent`, leaving terminal rows
   /// untouched.
   ///
@@ -260,6 +263,8 @@ extension MessagePersisting {
   func pendingSendWireAttempt(id: UUID) async throws -> UInt8? {
     nil
   }
+
+  func updateMessageCorescope(id: UUID, state: CorescopeState, heard: Int) async throws {}
 
   func queuedDirectMessageWireAttempts() async throws -> [QueuedDirectMessageWireAttempt] {
     []

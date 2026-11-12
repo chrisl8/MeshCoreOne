@@ -68,6 +68,11 @@ struct BubbleFooterRow: View {
     if footer.persistentRetryArmed, footer.showStatusRow {
       badges.append(AnyView(BubblePersistentRetryFooter(color: timeColor)))
     }
+    if footer.corescopeState != .none, footer.showStatusRow {
+      badges.append(AnyView(BubbleCorescopeFooter(
+        state: footer.corescopeState, heard: footer.corescopeHeard, color: timeColor
+      )))
+    }
     if footer.heardRepeats > 0 && (footer.showStatusRow || footer.showHeardCount) {
       let repeatCount = footer.showStatusRow
         ? footer.heardRepeats
@@ -236,6 +241,49 @@ private struct BubblePersistentRetryFooter: View {
       .foregroundStyle(color)
       .footerChip(color: color)
       .accessibilityLabel(L10n.Chats.Chats.Input.PersistentRetry.label)
+  }
+}
+
+/// Whether a CoreScope observer picked this channel message up: globe + count when seen,
+/// spinner-ish while checking, slashed globe when not seen, wifi-slash when CoreScope is unreachable.
+private struct BubbleCorescopeFooter: View {
+  let state: CorescopeState
+  let heard: Int
+  let color: Color
+
+  private var symbol: String {
+    switch state {
+    case .none, .checking: "globe"
+    case .seen: "globe"
+    case .notSeen: "exclamationmark.triangle"
+    case .offline: "wifi.slash"
+    }
+  }
+
+  private var accessibilityLabel: String {
+    switch state {
+    case .none, .checking: L10n.Chats.Chats.Message.Corescope.checking
+    case .seen: L10n.Chats.Chats.Message.Corescope.seen(heard)
+    case .notSeen: L10n.Chats.Chats.Message.Corescope.notSeen
+    case .offline: L10n.Chats.Chats.Message.Corescope.offline
+    }
+  }
+
+  var body: some View {
+    HStack(spacing: 2) {
+      Image(systemName: symbol)
+      switch state {
+      case .seen: Text("\(heard)")
+      case .checking, .none: Text("…")
+      case .notSeen, .offline: EmptyView()
+      }
+    }
+    .font(.caption2)
+    .foregroundStyle(color)
+    .opacity(state == .checking ? 0.6 : 1)
+    .footerChip(color: color)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityLabel)
   }
 }
 

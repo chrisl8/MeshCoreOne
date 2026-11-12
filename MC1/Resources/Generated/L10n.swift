@@ -687,6 +687,18 @@ public enum L10n {
             public static let singular = L10n.tr("Chats", "chats.message.action.heardTimes.singular", fallback: "Heard 1 Time")
           }
         }
+        public enum Corescope {
+          /// Location: BubbleFooterRow.swift - CoreScope visibility chip accessibility labels
+          public static let checking = L10n.tr("Chats", "chats.message.corescope.checking", fallback: "Checking CoreScope")
+          /// Not seen on CoreScope
+          public static let notSeen = L10n.tr("Chats", "chats.message.corescope.notSeen", fallback: "Not seen on CoreScope")
+          /// CoreScope unreachable
+          public static let offline = L10n.tr("Chats", "chats.message.corescope.offline", fallback: "CoreScope unreachable")
+          /// Seen on CoreScope, heard %d times
+          public static func seen(_ p1: Int) -> String {
+            return L10n.tr("Chats", "chats.message.corescope.seen", p1, fallback: "Seen on CoreScope, heard %d times")
+          }
+        }
         public enum HopCount {
           /// Location: UnifiedMessageBubble.swift - Accessibility label for hop count display - %d is count
           public static func accessibilityLabel(_ p1: Int) -> String {
@@ -4876,6 +4888,14 @@ public enum L10n {
         /// VoiceOver label for the Wi-Fi info button
         public static let wifiInfo = L10n.tr("Settings", "connection.link.wifiInfo", fallback: "Wi-Fi info")
       }
+    }
+    public enum Corescope {
+      /// After you send a channel message, the app checks this CoreScope site a few times and shows whether it was picked up and how many times it was heard. Leave blank to turn off.
+      public static let footer = L10n.tr("Settings", "corescope.footer", fallback: "After you send a channel message, the app checks this CoreScope site a few times and shows whether it was picked up and how many times it was heard. Leave blank to turn off.")
+      /// https://corescope.example.org
+      public static let placeholder = L10n.tr("Settings", "corescope.placeholder", fallback: "https://corescope.example.org")
+      /// CoreScope check
+      public static let title = L10n.tr("Settings", "corescope.title", fallback: "CoreScope check")
     }
     public enum DangerZone {
       /// Button to factory reset the device

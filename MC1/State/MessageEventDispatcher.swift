@@ -36,10 +36,11 @@ final class MessageEventDispatcher {
     let services = snapshot.services
     wireSyncCoordinator(services.syncCoordinator)
     wireHeardRepeats(services.heardRepeatsService)
+    wireCorescope(services.corescopeService)
     wireRxLogRegionUpdates(services.rxLogService)
     wireRemoteNode(services.remoteNodeService)
     wireRoomServer(services.roomServerService)
-    wireMessageService(services.messageService)
+    wireMessageService(services.messageService, corescopeService: services.corescopeService)
   }
 
   /// Cancels every stream-consuming task. Called before re-wiring against a
@@ -109,6 +110,18 @@ final class MessageEventDispatcher {
     tasks.append(task)
   }
 
+  private func wireCorescope(_ corescopeService: CorescopeService) {
+    guard let context else { return }
+    let events = corescopeService.events()
+    let task = Task { [weak appState, stream] in
+      for await event in events {
+        guard let appState, !Task.isCancelled, context.isCurrent(appState.connectionManager) else { return }
+        stream.send(.corescopeUpdated(messageID: event.messageID))
+      }
+    }
+    tasks.append(task)
+  }
+
   private func wireRxLogRegionUpdates(_ rxLogService: RxLogService) {
     guard let context else { return }
     let events = rxLogService.regionUpdateEvents()
@@ -158,7 +171,7 @@ final class MessageEventDispatcher {
     tasks.append(task)
   }
 
-  private func wireMessageService(_ messageService: MessageService) {
+  private func wireMessageService(_ messageService: MessageService, corescopeService: CorescopeService) {
     guard let context else { return }
     let events = messageService.statusEvents()
     let task = Task { [weak appState, stream] in
@@ -166,8 +179,10 @@ final class MessageEventDispatcher {
         guard let appState, !Task.isCancelled, context.isCurrent(appState.connectionManager) else { return }
         switch event {
         case let .statusResolved(messageID, status, roundTripTime):
+          if status == .sent { Task { await corescopeService.track(messageID: messageID) } }
           stream.send(.messageStatusResolved(messageID: messageID, status: status, roundTripTime: roundTripTime))
         case let .resent(messageID):
+          Task { await corescopeService.track(messageID: messageID) }
           stream.send(.messageResent(messageID: messageID))
         case let .retrying(messageID, attempt, maxAttempts):
           stream.send(.messageRetrying(messageID: messageID, attempt: attempt, maxAttempts: maxAttempts))

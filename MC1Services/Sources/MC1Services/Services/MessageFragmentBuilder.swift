@@ -254,7 +254,9 @@ public enum MessageFragmentBuilder {
       retryAttempt: message.retryAttempt,
       maxRetryAttempts: message.maxRetryAttempts,
       sendCount: message.sendCount,
-      persistentRetryArmed: message.persistentRetryArmed
+      persistentRetryArmed: message.persistentRetryArmed,
+      corescopeState: CorescopeState(rawValue: message.corescopeStateRaw) ?? .none,
+      corescopeHeard: message.corescopeHeard
     )
   }
 

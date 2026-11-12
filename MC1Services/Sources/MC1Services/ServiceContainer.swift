@@ -61,6 +61,7 @@ public final class ServiceContainer {
 
   /// Service for tracking heard repeats of sent messages
   public let heardRepeatsService: HeardRepeatsService
+  public let corescopeService: CorescopeService
 
   /// Buffer for batching debug log entries to persistence
   public let debugLogBuffer: DebugLogBuffer
@@ -178,6 +179,7 @@ public final class ServiceContainer {
 
     // Core services, constructed so every dependency exists before its consumer
     heardRepeatsService = HeardRepeatsService(dataStore: dataStore)
+    corescopeService = CorescopeService(dataStore: dataStore)
     rxLogService = RxLogService(
       session: session,
       dataStore: dataStore,
@@ -475,6 +477,8 @@ public final class ServiceContainer {
     advertisementService.finishEvents()
     messageService.finishStatusEvents()
     heardRepeatsService.finishEvents()
+    corescopeService.finishEvents()
+    await corescopeService.cancelAll()
     remoteNodeService.finishEvents()
     roomServerService.finishEvents()
     contactService.finishEvents()

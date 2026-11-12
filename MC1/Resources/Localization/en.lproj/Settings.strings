@@ -1955,6 +1955,9 @@
 "importKey.error.invalidKey" = "Not a valid Ed25519 private key";
 
 // Reply with Quote
+"corescope.title" = "CoreScope check";
+"corescope.placeholder" = "https://corescope.example.org";
+"corescope.footer" = "After you send a channel message, the app checks this CoreScope site a few times and shows whether it was picked up and how many times it was heard. Leave blank to turn off.";
 "replyWithQuote.toggle" = "Reply with Quote";
 "replyWithQuote.footer" = "Replying includes a preview of the original message.";
 
