@@ -483,7 +483,7 @@ extension ChatViewModel {
     case .messageStatusResolved, .roomMessageStatusUpdated:
       !failedSendConversationIDs.isEmpty
     case .directMessageReceived, .channelMessageReceived, .roomMessageReceived,
-         .messageRetrying, .heardRepeatRecorded, .reactionReceived,
+         .messageRetrying, .heardRepeatRecorded, .corescopeUpdated, .reactionReceived,
          .messagesRegionUpdated, .routingChanged:
       false
     }

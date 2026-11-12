@@ -435,6 +435,21 @@ public extension PersistenceStore {
     }
   }
 
+  func updateMessageCorescope(id: UUID, state: CorescopeState, heard: Int) throws {
+    let targetID = id
+    var descriptor = FetchDescriptor<Message>(predicate: #Predicate { $0.id == targetID })
+    descriptor.fetchLimit = 1
+    guard let message = try modelContext.fetch(descriptor).first else { return }
+    message.corescopeStateRaw = state.rawValue
+    message.corescopeHeard = heard
+    do {
+      try modelContext.save()
+    } catch {
+      modelContext.rollback()
+      throw error
+    }
+  }
+
   /// Update message status unless delivery has already won the race.
   ///
   /// - Returns: `true` if the row's status was changed, `false` if no row was

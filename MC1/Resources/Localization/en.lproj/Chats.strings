@@ -865,6 +865,12 @@
 /* Location: ChatInputBar.swift - Accessibility label for send button */
 "chats.input.sendMessage" = "Send message";
 
+/* Location: BubbleFooterRow.swift - CoreScope visibility chip accessibility labels */
+"chats.message.corescope.checking" = "Checking CoreScope";
+"chats.message.corescope.seen" = "Seen on CoreScope, heard %d times";
+"chats.message.corescope.notSeen" = "Not seen on CoreScope";
+"chats.message.corescope.offline" = "CoreScope unreachable";
+
 /* Location: PersistentRetryToggle.swift - Accessibility label for the keep-trying toggle beside the compose field */
 "chats.input.persistentRetry.label" = "Persistent retry";
 

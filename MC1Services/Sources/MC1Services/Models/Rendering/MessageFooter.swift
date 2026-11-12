@@ -46,6 +46,9 @@ public struct MessageFooter: Sendable, Hashable {
   public let sendCount: Int
   /// The user armed persistent retry for this send.
   public let persistentRetryArmed: Bool
+  /// CoreScope visibility check state and observer count for outgoing channel messages.
+  public let corescopeState: CorescopeState
+  public let corescopeHeard: Int
 
   /// True when `regionMatchNames` has more than one entry. Derived, not stored.
   public var regionIsAmbiguous: Bool {
@@ -68,7 +71,9 @@ public struct MessageFooter: Sendable, Hashable {
     retryAttempt: Int,
     maxRetryAttempts: Int,
     sendCount: Int,
-    persistentRetryArmed: Bool = false
+    persistentRetryArmed: Bool = false,
+    corescopeState: CorescopeState = .none,
+    corescopeHeard: Int = 0
   ) {
     self.showHop = showHop
     self.hopCount = hopCount
@@ -86,6 +91,8 @@ public struct MessageFooter: Sendable, Hashable {
     self.maxRetryAttempts = maxRetryAttempts
     self.sendCount = sendCount
     self.persistentRetryArmed = persistentRetryArmed
+    self.corescopeState = corescopeState
+    self.corescopeHeard = corescopeHeard
   }
 
   /// Returns a new footer with `status` overridden. Eliminates the multi-field
@@ -107,7 +114,9 @@ public struct MessageFooter: Sendable, Hashable {
       retryAttempt: retryAttempt,
       maxRetryAttempts: maxRetryAttempts,
       sendCount: sendCount,
-      persistentRetryArmed: persistentRetryArmed
+      persistentRetryArmed: persistentRetryArmed,
+      corescopeState: corescopeState,
+      corescopeHeard: corescopeHeard
     )
   }
 }
