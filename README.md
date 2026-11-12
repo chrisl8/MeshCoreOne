@@ -9,6 +9,18 @@ Download from the App Store or sideload using unsigned IPA files under [Releases
   <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="50">
 </a>
 
+## About this fork (`enhanced`)
+
+This is [chrisl8's fork](https://github.com/chrisl8/MeshCoreOne) of [MeshCore One](https://github.com/Avi0n/MeshCoreOne). The `enhanced` branch is upstream `dev` plus the extras below. Each lives on its own `feature/*` branch too, so it can be taken separately. Everything else is upstream's work and is covered by the sections that follow.
+
+**Enhancements**
+- **Why did my DM fail?** A failed DM shows whether a repeater was heard forwarding it ("on mesh") or nothing heard it.
+- **DM progress on the Live Activity**: send attempts, retries and waits show on the Lock Screen and Dynamic Island.
+- **Persistent retry** (clock-arrow toggle beside the compose field): an armed DM sends twice up front (saved path, then flood), then keeps retrying with growing waits. Late retries are prefixed with the original send time. A waiting retry also fires early once the phone has moved about 200 m (needs "Always" location). A footer icon marks armed messages, and an orange banner in the Chats list shows one that is still retrying.
+- **CoreScope check for channel messages**: after you send to a channel, the app polls a CoreScope mesh-analyzer site's public API and shows a globe chip with how many times observers heard it, or a warning or offline icon. Works for any channel the site tracks. Set the site URL under Settings > Chat (blank turns it off).
+
+**Build notes:** `enhanced` uses personal bundle IDs (`net.lofland.mc1`) and compiles out the iOS 27-only swipe-actions API so it builds on Xcode 26.5. Change the bundle IDs in `project.yml` to sign it yourself.
+
 ## Features
 
 ### Messaging
