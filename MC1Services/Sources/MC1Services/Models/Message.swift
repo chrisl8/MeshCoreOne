@@ -106,6 +106,15 @@ public final class Message {
   /// Number of times this message has been sent (1 = original, 2+ = sent again)
   public var sendCount: Int = 1
 
+  /// True when the user armed persistent retry (backoff rounds) for this send. Kept after the
+  /// retry finishes so the bubble can keep showing it.
+  public var persistentRetryArmed: Bool = false
+
+  /// CoreScope visibility check result (`CorescopeState` raw value) and how many
+  /// observers/repeats CoreScope reported. Both 0 when the check never ran.
+  public var corescopeStateRaw: Int = 0
+  public var corescopeHeard: Int = 0
+
   /// Current retry attempt (0 = first attempt, 1 = first retry, etc.)
   public var retryAttempt: Int = 0
 
@@ -197,6 +206,9 @@ public final class Message {
     roundTripTime: UInt32? = nil,
     heardRepeats: Int = 0,
     sendCount: Int = 1,
+    persistentRetryArmed: Bool = false,
+    corescopeStateRaw: Int = 0,
+    corescopeHeard: Int = 0,
     retryAttempt: Int = 0,
     maxRetryAttempts: Int = 0,
     deduplicationKey: String? = nil,
@@ -239,6 +251,9 @@ public final class Message {
     self.roundTripTime = roundTripTime
     self.heardRepeats = heardRepeats
     self.sendCount = sendCount
+    self.persistentRetryArmed = persistentRetryArmed
+    self.corescopeStateRaw = corescopeStateRaw
+    self.corescopeHeard = corescopeHeard
     self.retryAttempt = retryAttempt
     self.maxRetryAttempts = maxRetryAttempts
     self.deduplicationKey = deduplicationKey
@@ -286,6 +301,9 @@ public final class Message {
       roundTripTime: dto.roundTripTime,
       heardRepeats: dto.heardRepeats,
       sendCount: dto.sendCount,
+      persistentRetryArmed: dto.persistentRetryArmed,
+      corescopeStateRaw: dto.corescopeStateRaw,
+      corescopeHeard: dto.corescopeHeard,
       retryAttempt: dto.retryAttempt,
       maxRetryAttempts: dto.maxRetryAttempts,
       deduplicationKey: dto.deduplicationKey,
@@ -377,6 +395,9 @@ public struct MessageDTO: Sendable, Equatable, Hashable, Identifiable, Codable {
   public var roundTripTime: UInt32?
   public var heardRepeats: Int
   public var sendCount: Int
+  public var persistentRetryArmed: Bool
+  public var corescopeStateRaw: Int
+  public var corescopeHeard: Int
   public var retryAttempt: Int
   public var maxRetryAttempts: Int
   public var deduplicationKey: String?
@@ -406,7 +427,7 @@ public struct MessageDTO: Sendable, Equatable, Hashable, Identifiable, Codable {
     case id, radioID, contactID, channelIndex, text, timestamp, createdAt,
          sortDate, direction, status, textType, ackCode, pathLength, snr,
          pathNodes, senderKeyPrefix, senderNodeName, isRead, replyToID,
-         roundTripTime, heardRepeats, sendCount, retryAttempt, maxRetryAttempts,
+         roundTripTime, heardRepeats, sendCount, persistentRetryArmed, corescopeStateRaw, corescopeHeard, retryAttempt, maxRetryAttempts,
          deduplicationKey, linkPreviewURL, linkPreviewTitle, linkPreviewImageData,
          linkPreviewIconData, linkPreviewFetched, containsSelfMention, mentionSeen,
          failureSeen, timestampCorrected, senderTimestamp, reactionSummary,
@@ -439,6 +460,9 @@ public struct MessageDTO: Sendable, Equatable, Hashable, Identifiable, Codable {
     roundTripTime = try container.decodeIfPresent(UInt32.self, forKey: .roundTripTime)
     heardRepeats = try container.decode(Int.self, forKey: .heardRepeats)
     sendCount = try container.decode(Int.self, forKey: .sendCount)
+    persistentRetryArmed = try container.decodeIfPresent(Bool.self, forKey: .persistentRetryArmed) ?? false
+    corescopeStateRaw = try container.decodeIfPresent(Int.self, forKey: .corescopeStateRaw) ?? 0
+    corescopeHeard = try container.decodeIfPresent(Int.self, forKey: .corescopeHeard) ?? 0
     retryAttempt = try container.decode(Int.self, forKey: .retryAttempt)
     maxRetryAttempts = try container.decode(Int.self, forKey: .maxRetryAttempts)
     deduplicationKey = try container.decodeIfPresent(String.self, forKey: .deduplicationKey)
@@ -484,6 +508,9 @@ public struct MessageDTO: Sendable, Equatable, Hashable, Identifiable, Codable {
     roundTripTime = message.roundTripTime
     heardRepeats = message.heardRepeats
     sendCount = message.sendCount
+    persistentRetryArmed = message.persistentRetryArmed
+    corescopeStateRaw = message.corescopeStateRaw
+    corescopeHeard = message.corescopeHeard
     retryAttempt = message.retryAttempt
     maxRetryAttempts = message.maxRetryAttempts
     deduplicationKey = message.deduplicationKey
@@ -539,6 +566,9 @@ public struct MessageDTO: Sendable, Equatable, Hashable, Identifiable, Codable {
     roundTripTime: UInt32?,
     heardRepeats: Int,
     sendCount: Int = 1,
+    persistentRetryArmed: Bool = false,
+    corescopeStateRaw: Int = 0,
+    corescopeHeard: Int = 0,
     retryAttempt: Int,
     maxRetryAttempts: Int,
     deduplicationKey: String? = nil,
@@ -581,6 +611,9 @@ public struct MessageDTO: Sendable, Equatable, Hashable, Identifiable, Codable {
     self.roundTripTime = roundTripTime
     self.heardRepeats = heardRepeats
     self.sendCount = sendCount
+    self.persistentRetryArmed = persistentRetryArmed
+    self.corescopeStateRaw = corescopeStateRaw
+    self.corescopeHeard = corescopeHeard
     self.retryAttempt = retryAttempt
     self.maxRetryAttempts = maxRetryAttempts
     self.deduplicationKey = deduplicationKey

@@ -53,6 +53,7 @@ extension ChatViewModel {
       await handleMessageFailure(messageID: messageID)
 
     case let .heardRepeatRecorded(messageID, _),
+         let .corescopeUpdated(messageID),
          let .reactionReceived(messageID, _):
       timeline.enqueueReload(messageID: messageID)
 
