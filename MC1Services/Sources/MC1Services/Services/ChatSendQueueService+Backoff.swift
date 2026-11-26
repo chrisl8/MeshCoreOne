@@ -23,6 +23,22 @@ extension ChatSendQueueService {
     backoffWakeAt = nil
   }
 
+  /// Sends every DM that is waiting out a backoff round now, without using up the round.
+  /// Called when the phone has moved far enough that the mesh around it may have changed.
+  public func sendWaitingBackoffRoundsNow() async {
+    guard !isRetired else { return }
+    do {
+      let advanced = try await dataStore.advanceWaitingBackoffRounds(radioID: radioID, now: Date())
+      guard !advanced.isEmpty else { return }
+      // The refunded round number comes back on the next schedule, so forget it was enqueued.
+      for messageID in advanced { backoffEnqueuedRound[messageID] = nil }
+      logger.info("Movement: sending \(advanced.count) waiting backoff round(s) early")
+      await enqueueDueBackoffRounds()
+    } catch {
+      logger.error("Movement retry failed: \(String(describing: error))")
+    }
+  }
+
   /// Hands every round whose `notBefore` has passed to the DM drain, then re-arms for the next one.
   func enqueueDueBackoffRounds() async {
     backoffWakeTask = nil

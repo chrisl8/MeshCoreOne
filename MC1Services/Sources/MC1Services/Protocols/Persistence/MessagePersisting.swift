@@ -252,6 +252,11 @@ public protocol MessagePersisting: Actor {
     policy: DMBackoffPolicy,
     now: Date
   ) async throws -> DMBackoffPlan?
+
+  /// Pulls every DM still waiting out a backoff round forward to `now` and refunds that
+  /// round, so a movement-triggered send does not use up the scheduled rounds.
+  /// Returns the message IDs that were advanced.
+  func advanceWaitingBackoffRounds(radioID: UUID, now: Date) async throws -> [UUID]
 }
 
 // MARK: - Default Parameter Values
@@ -304,6 +309,10 @@ extension MessagePersisting {
     now: Date
   ) async throws -> DMBackoffPlan? {
     nil
+  }
+
+  func advanceWaitingBackoffRounds(radioID: UUID, now: Date) async throws -> [UUID] {
+    []
   }
 }
 

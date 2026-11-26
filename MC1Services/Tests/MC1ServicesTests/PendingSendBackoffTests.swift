@@ -58,6 +58,27 @@ struct PendingSendBackoffTests {
     #expect(try await fixture.store.queuedDirectMessageWireAttempts().contains { $0.messageID == fixture.messageID })
   }
 
+  /// Movement pulls a waiting round forward and refunds it, so the scheduled rounds stay available.
+  @Test
+  func `advancing a waiting round sends it now and refunds the round`() async throws {
+    let fixture = try await makeFixture(maxBackoffRounds: 3)
+    let scheduledAt = Date()
+    _ = try #require(await fixture.store.scheduleBackoffRetry(
+      pendingSendID: fixture.row.id, expectedDeadline: fixture.deadline, policy: policy, now: scheduledAt
+    ))
+
+    let now = scheduledAt.addingTimeInterval(30)
+    let advanced = try await fixture.store.advanceWaitingBackoffRounds(radioID: fixture.radioID, now: now)
+    #expect(advanced == [fixture.messageID])
+    let row = try #require(await fixture.store.fetchPendingSends(radioID: fixture.radioID).first)
+    #expect(row.notBefore == now)
+    #expect(row.backoffRound == 0)
+
+    // Already due: nothing left to advance.
+    let again = try await fixture.store.advanceWaitingBackoffRounds(radioID: fixture.radioID, now: now)
+    #expect(again.isEmpty)
+  }
+
   /// An 8-attempt burst with 3 rounds counts to 11: the rounds show 9/11, 10/11 and 11/11.
   @Test
   func `rounds continue the burst's attempt count`() async throws {

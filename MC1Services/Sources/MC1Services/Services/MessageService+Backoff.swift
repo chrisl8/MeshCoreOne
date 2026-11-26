@@ -39,6 +39,9 @@ extension MessageService {
     statusEventBroadcaster.yield(.retrying(
       messageID: messageID, attempt: plan.retryAttempt, maxAttempts: plan.maxRetryAttempts
     ))
+    statusEventBroadcaster.yield(.backoffScheduled(
+      messageID: messageID, round: plan.round, maxRounds: plan.maxRounds, notBefore: plan.notBefore
+    ))
     await backoffScheduledHandler?(plan.notBefore)
     return true
   }

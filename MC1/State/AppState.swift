@@ -361,6 +361,10 @@ final class AppState {
 
   /// Live Activity lifecycle (start/update/stop on Lock Screen and Dynamic Island)
   let liveActivityManager = LiveActivityManager()
+  /// Chats-list banner for a DM that is still retrying.
+  var pendingSendTracker: PendingSendTracker?
+  /// Sends a waiting backoff round early once the phone has moved.
+  var retryMovementMonitor: RetryMovementMonitor?
 
   /// Task chain that joins each BLE lifecycle transition before starting the next.
   var bleLifecycleTransitionTask: Task<Void, Never>?
@@ -753,6 +757,9 @@ final class AppState {
     advertisementEventsTask = nil
     cancelRxLogLiveActivitySubscription()
     chatPrewarmRefresher?.cancelAll()
+    pendingSendTracker?.stop()
+    pendingSendTracker = nil
+    retryMovementMonitor?.stop()
     messageEventDispatcher.cancelAll()
     navigation.clearPendingLinks()
     resetRadioScopedToolWorkspaces()

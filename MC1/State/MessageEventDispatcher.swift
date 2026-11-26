@@ -194,6 +194,9 @@ final class MessageEventDispatcher {
           appState.refreshConversations()
         case let .reactionAccepted(messageID, summary):
           stream.send(.reactionReceived(messageID: messageID, summary: summary))
+        case .backoffScheduled:
+          // The `.retrying` event sent alongside already updates the bubble.
+          break
         }
       }
     }

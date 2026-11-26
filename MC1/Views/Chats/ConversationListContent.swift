@@ -68,6 +68,20 @@ struct ConversationListContent: View {
       guard hasLoadedOnce else { return }
       await prewarmTopConversations()
     }
+    .safeAreaInset(edge: .top, spacing: 0) { pendingSendBanner }
+  }
+
+  /// Shown while a DM is still being retried; tapping opens its conversation.
+  @ViewBuilder
+  private var pendingSendBanner: some View {
+    if let banner = appState.pendingSendTracker?.banner,
+       let conversation = (pinnedConversations + otherConversations)
+         .first(where: { $0.id == banner.contactID }) {
+      PendingSendBanner(progress: banner.progress) {
+        onSelect(ChatRoute(conversation: conversation))
+      }
+      .transition(.move(edge: .top).combined(with: .opacity))
+    }
   }
 
   private var loadingBody: some View {

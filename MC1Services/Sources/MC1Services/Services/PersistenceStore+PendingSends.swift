@@ -451,6 +451,28 @@ public extension PersistenceStore {
     )
   }
 
+  func advanceWaitingBackoffRounds(radioID: UUID, now: Date) async throws -> [UUID] {
+    let scopedRadioID = radioID
+    let predicate = #Predicate<PendingSend> { row in
+      row.radioID == scopedRadioID && row.ackDeadline == nil && row.backoffRound > 0
+    }
+    var advanced: [UUID] = []
+    for row in try modelContext.fetch(FetchDescriptor(predicate: predicate)) {
+      guard row.kind == .dm, let notBefore = row.notBefore, notBefore > now else { continue }
+      row.notBefore = now
+      row.backoffRound -= 1
+      advanced.append(row.messageID)
+    }
+    guard !advanced.isEmpty else { return [] }
+    do {
+      try modelContext.save()
+    } catch {
+      modelContext.rollback()
+      throw error
+    }
+    return advanced
+  }
+
   private func pendingSendRow(id: UUID) throws -> PendingSend? {
     let target = id
     let predicate = #Predicate<PendingSend> { row in

@@ -13,7 +13,9 @@ public extension ChatSendQueueService {
     }
     defer { finishAdmission() }
 
-    let message = try await messageService.createPendingMessage(text: text, to: contact)
+    let message = try await messageService.createPendingMessage(
+      text: text, to: contact, backoffArmed: maxBackoffRounds > 0
+    )
     onMessageCreated?(message)
     do {
       try await enqueueDM(DirectMessageEnvelope(

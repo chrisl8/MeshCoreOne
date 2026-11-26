@@ -26,4 +26,6 @@ public enum MessageStatusEvent: Sendable {
   /// A message failed after exhausting retries or a terminal send error.
   case failed(messageID: UUID)
   case reactionAccepted(messageID: UUID, summary: String)
+  /// An opted-in DM is waiting out a backoff round; it sends again at `notBefore`.
+  case backoffScheduled(messageID: UUID, round: Int, maxRounds: Int, notBefore: Date)
 }

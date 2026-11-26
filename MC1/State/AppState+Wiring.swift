@@ -160,6 +160,21 @@ extension AppState {
     let services = snapshot.services
     guard context.isCurrent(connectionManager) else { return }
 
+    pendingSendTracker?.stop()
+    let tracker = PendingSendTracker(dataStore: services.dataStore)
+    tracker.start(messageService: services.messageService, heardRepeatsService: services.heardRepeatsService)
+    pendingSendTracker = tracker
+
+    let sendQueue = services.chatSendQueueService
+    let movementMonitor = retryMovementMonitor ?? RetryMovementMonitor()
+    retryMovementMonitor = movementMonitor
+    movementMonitor.onMoved = {
+      Task { await sendQueue.sendWaitingBackoffRoundsNow() }
+    }
+    tracker.onWaitingChanged = { [weak movementMonitor] isWaiting in
+      if isWaiting { movementMonitor?.start() } else { movementMonitor?.stop() }
+    }
+
     batteryMonitor.onBatteryChanged = { [weak self] battery in
       Task { @MainActor [weak self] in
         guard let self, context.isCurrent(connectionManager) else { return }
